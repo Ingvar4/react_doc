@@ -1,0 +1,197 @@
+---
+title: Использование JavaScript в JSX с фигурными скобками
+description: JSX позволяет писать разметку, похожую на HTML, прямо в файле JavaScript, благодаря чему логика рендеринга и контент находятся в одном месте. Иногда вам может понадобиться добавить небольшой фрагмент кода JavaScript или обратиться к динамическому свойству внутри этой разметки. В таком случае вы можете использовать фигурные скобки в JSX, чтобы 'открыть окно' в JavaScript.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+* Как передавать строки с кавычками
+* Как ссылаться на переменную JavaScript внутри JSX с помощью фигурных скобок
+* Как вызывать функцию JavaScript внутри JSX с помощью фигурных скобок
+* Как использовать объект JavaScript внутри JSX с помощью фигурных скобок
+</Callout>
+
+## Передача строк с кавычками {/*passing-strings-with-quotes*/}
+
+Если вы хотите передать строковый атрибут в JSX, поместите его в одинарные или двойные кавычки:
+
+<Sandpack code={
+`export default function Avatar() {
+    return (
+      <img
+        className="avatar"
+        src="https://react.dev/images/docs/scientists/7vQD0fPs.jpg"
+        alt="Gregorio Y. Zara"
+        style={{
+          borderRadius: "50%", 
+          height: '90px'
+        }}
+      />
+    );
+  }`}
+/>
+
+Здесь `'https://react.dev/images/docs/scientists/7vQD0fPs.jpg'` и `"Gregorio Y. Zara'` передаются в виде строк.
+
+Но что, если вы хотите динамически задать текст `src` или `alt`? Вы можете **использовать значение из JavaScript, заменив `'` и `"` на `{` и `}`**:
+
+<Sandpack code={
+`export default function Avatar() {
+    const avatar = 'https://react.dev/images/docs/scientists/7vQD0fPs.jpg';
+    const description = 'Gregorio Y. Zara';
+    return (
+      <img
+        className="avatar"
+        src={avatar}
+        alt={description}
+        style={{
+          borderRadius: "50%", 
+          height: '90px'
+        }}
+      />
+    );
+  }`}
+/>
+
+Обратите внимание на разницу между `className='avatar'`, которое указывает имя CSS-класса `'avatar'`, делающее изображение круглым, и `src= {avatar}`, который считывает значение переменной JavaScript под названием `avatar`. Это потому, что фигурные скобки позволяют работать с JavaScript прямо в вашем разметке!
+
+## Использование фигурных скобок: окно в мир JavaScript {/*using-curly-braces-a-window-into-the-javascript-world*/}
+
+JSX — это особый способ написания JavaScript. Это означает, что внутри него можно использовать JavaScript — с фигурными скобками `{ }`. В примере ниже сначала объявляется имя ученого, `name`, а затем оно вставляется с помощью фигурных скобок внутрь тега `<h1>`:
+
+<Sandpack code={
+`export default function TodoList() {
+    const name = 'Gregorio Y. Zara';
+    return (
+      <h1>{name}'s To Do List</h1>
+    );
+  }`}
+/>
+
+Попробуйте изменить значение `name` с `'Gregorio Y. Zara'` на `'Hedy Lamarr'`. Видите, как меняется заголовок списка?
+
+В фигурных скобках будет работать любое выражение JavaScript, включая вызовы функций, таких как `formatDate()`:
+
+<Sandpack code={
+`const today = new Date();
+
+  function formatDate(date) {
+    return new Intl.DateTimeFormat(
+      'en-US',
+      { weekday: 'long' }
+    ).format(date);
+  }
+
+  export default function TodoList() {
+    return (
+      <h1>Список дел на {formatDate(today)}</h1>
+    );
+  }`}
+/>
+
+### Где использовать фигурные скобки {/*where-to-use-curly-braces*/}
+
+Внутри JSX фигурные скобки можно использовать только двумя способами:
+
+1. **В качестве текста** непосредственно внутри тега JSX: `<h1>{name}'s To Do List</h1>` работает, но `<{tag}>Gregorio Y. Zara's To Do List</{tag}>` — нет.
+2. **В качестве атрибутов**, непосредственно следующих за знаком `=`: `src={avatar}` прочитает переменную `avatar`, но `src='{avatar}'` передаст строку `'{avatar}'`.
+
+## Использование 'двойных фигурных скобок': CSS и другие объекты в JSX {/*использование-двойных-фигурных-скобок-css-и-других-объектов-в-jsx*/}
+
+Помимо строк, чисел и других выражений JavaScript, в JSX можно передавать даже объекты. Объекты также обозначаются фигурными скобками, например `{ name: 'Hedy Lamarr', inventions: 5 }`. Поэтому, чтобы передать объект JS в JSX, необходимо обернуть объект еще одной парой фигурных скобок: `person={{ name: 'Hedy Lamarr', inventions: 5 }}`.
+
+Вы можете увидеть это на примере встроенных стилей CSS в JSX. React не требует от вас использования встроенных стилей (в большинстве случаев отлично подходят классы CSS). Но когда вам нужен встроенный стиль, вы передаете объект в атрибут `style`:
+
+<Sandpack code={
+`export default function TodoList() {
+    return (
+      <ul style={{
+        backgroundColor: 'black',
+        color: 'pink'
+      }}>
+        <li>Усовершенствовать видеофон</li>
+        <li>Подготовить лекции по аэронавтике</li>
+        <li>Работать над двигателем, работающим на спирте</li>
+      </ul>
+    );
+  }`}
+/>
+
+Попробуйте изменить значения `backgroundColor` и `color`.
+
+Вы действительно можете увидеть объект JavaScript внутри фигурных скобок, если напишете его так:
+
+```js
+<ul style={
+  {
+    backgroundColor: 'black',
+    color: 'pink'
+  }
+}>
+```
+
+В следующий раз, когда вы увидите `{{` и `}}` в JSX, знайте, что это не что иное, как объект внутри фигурных скобок JSX!
+
+<Callout type='idea'>
+Встроенные свойства `style` пишутся в формате camelCase. Например, HTML-код `<ul style="background-color: black">` в вашем компоненте будет записан как `<ul style={{ backgroundColor: 'black' }}>`.
+</Callout>
+
+## Еще больше веселья с объектами JavaScript и фигурными скобками 
+
+Вы можете объединить несколько выражений в один объект и ссылаться на них в вашем JSX внутри фигурных скобок:
+
+<Sandpack code={
+`const person = {
+    name: 'Gregorio Y. Zara',
+    theme: {
+      backgroundColor: 'black',
+      color: 'pink'
+    }
+  };
+
+  export default function TodoList() {
+    return (
+      <div style={person.theme}>
+        <h1>Задачи {person.name}</h1>
+        <img
+          className="avatar"
+          src="https://react.dev/images/docs/scientists/7vQD0fPs.jpg"
+          alt="Gregorio Y. Zara"
+        />
+        <ul>
+          <li>Улучшить видеофон</li>
+          <li>Подготовить лекции по аэронавтике</li>
+          <li>Работать над двигателем, работающим на спирте</li>
+        </ul>
+      </div>
+    );
+  }`}
+/>
+
+В этом примере объект JavaScript `person` содержит строку `name` и объект `theme`:
+
+```js
+const person = {
+  name: 'Gregorio Y. Zara',
+  theme: {
+    backgroundColor: 'black',
+    color: 'pink'
+  }
+};
+```
+
+Компонент может использовать эти значения из `person` следующим образом:
+
+```js
+<div style={person.theme}>
+  <h1>Задачи {person.name}</h1>
+```
+
+JSX — очень минималистичный язык шаблонов, поскольку позволяет организовывать данные и логику с помощью JavaScript.
+
+## Теперь вы знаете почти все о JSX:
+
+* Атрибуты JSX в кавычках передаются как строки.
+* Фигурные скобки позволяют вставлять логику и переменные JavaScript в разметку.
+* Они работают внутри содержимого тега JSX или сразу после `=` в атрибутах.
+* `{{` и `}}` — это не специальный синтаксис: это объект JavaScript, заключенный в фигурные скобки JSX.

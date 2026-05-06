@@ -1,0 +1,179 @@
+---
+title: Введение
+description: React Compiler — это новый инструмент для автоматической оптимизации вашего React-приложения на этапе сборки. Он работает с обычным JavaScript и понимает правила React, поэтому вам не нужно переписывать код, чтобы его использовать.
+---
+<Callout>
+### Вы узнаете [!toc]
+* Что делает React Compiler
+* Начало работы с компилятором
+* Стратегии постепенного внедрения
+* Отладка и устранение неполадок
+* Использование компилятора в вашей библиотеке React
+</Callout>
+
+## Что делает React Compiler? 
+
+React Compiler автоматически оптимизирует ваше приложение React на этапе сборки. React и без оптимизации часто работает достаточно быстро, но иногда для обеспечения отзывчивости приложения требуется вручную сохранять в кэше компоненты и значения. Такая ручная мемоизация утомительна, в ней легко допустить ошибку, и она добавляет лишний код, который нужно поддерживать. React Compiler выполняет эту оптимизацию автоматически, освобождая вас от этой умственной нагрузки, чтобы вы могли сосредоточиться на разработке функций.
+
+### До появления React Compiler 
+
+Без компилятора вам нужно вручную мемоизировать компоненты и значения, чтобы оптимизировать повторную прорисовку:
+
+```js
+import { useMemo, useCallback, memo } from 'react';
+
+const ExpensiveComponent = memo(function ExpensiveComponent({ data, onClick }) {
+  const processedData = useMemo(() => {
+    return expensiveProcessing(data);
+  }, [data]);
+
+  const handleClick = useCallback((item) => {
+    onClick(item.id);
+  }, [onClick]);
+
+  return (
+    <div>
+      {processedData.map(item => (
+        <Item key={item.id} onClick={() => handleClick(item)} />
+      ))}
+    </div>
+  );
+});
+```
+<Callout>
+Эта ручная мемоизация содержит незаметную ошибку, которая нарушает работу мемоизации:
+
+```js 
+<Item key={item.id} onClick={() => handleClick(item)} />
+```
+
+Несмотря на то, что `handleClick` обернут в `useCallback`, стрелочная функция `() => handleClick(item)` создает новую функцию каждый раз, когда компонент рендерится. Это означает, что `Item` всегда будет получать новый проп `onClick`, что нарушает мемоизацию.
+
+React Compiler способен правильно оптимизировать это с использованием стрелочной функции или без нее, гарантируя, что `Item` будет перерисовываться только при изменении `props.onClick`.
+</Callout>
+
+### После React Compiler 
+
+С React Compiler вы пишете тот же код без ручной мемоизации:
+
+```js
+function ExpensiveComponent({ data, onClick }) {
+  const processedData = expensiveProcessing(data);
+
+  const handleClick = (item) => {
+    onClick(item.id);
+  };
+
+  return (
+    <div>
+      {processedData.map(item => (
+        <Item key={item.id} onClick={() => handleClick(item)} />
+      ))}
+    </div>
+  );
+}
+```
+
+[Посмотреть этот пример в React Compiler Playground](https://playground.react.dev/#N4Igzg9grgTgxgUxALhAMygOzgFwJYSYAEAogB4AOCmYeAbggMIQC2Fh1OAFMEQCYBDHAIA0RQowA2eOAGsiAXwCURYAB1iROITA4iFGBERgwCPgBEhAogF4iCStVoMACoeO1MAcy6DhSgG4NDSItHT0ACwFMPkkmaTlbIi48HAQWFRsAPlUQ0PFMKRlZFLSWADo8PkC8hSDMPJgEHFhiLjzQgB4+eiyO-OADIwQTM0thcpYBClL02xz2zXz8zoBJMqJZBABPG2BU9Mq+BQKiuT2uTJyomLizkoOMk4B6PqX8pSUFfs7nnro3qEapgFCAFEA)
+
+React Compiler автоматически применяет оптимальную мемоизацию, гарантируя, что ваше приложение перерисовывается только при необходимости.
+
+#### Какую мемоизацию добавляет React Compiler?
+
+Автоматическая мемоизация React Compiler в первую очередь направлена на **повышение производительности обновления** (повторный рендеринг существующих компонентов), поэтому она сосредоточена на следующих двух сценариях использования:
+
+1. **Пропуск каскадного повторного рендеринга компонентов**
+    * Повторный рендеринг `<Parent />` приводит к повторному рендерингу многих компонентов в его дереве компонентов, даже если изменился только `<Parent />`
+1. **Пропуск ресурсоемких вычислений из-за пределов React**
+    * Например, вызов `expensivelyProcessAReallyLargeArrayOfObjects()` внутри вашего компонента или хука, которому нужны эти данные
+
+#### Оптимизация повторного рендеринга
+
+React позволяет описывать пользовательский интерфейс как функцию его текущего состояния (а точнее: его пропсов, состояния и контекста). В текущей реализации, когда состояние компонента изменяется, React перерисует этот компонент _и всех его дочерних элементов_ — если только вы не применили какую-либо форму ручной мемоизации с помощью `useMemo()`, `useCallback()` или `React.memo()`. Например, в следующем примере `<MessageButton>` будет перерисовываться всякий раз, когда изменяется состояние `<FriendList>`:
+
+```js
+function FriendList({ friends }) {
+  const onlineCount = useFriendOnlineCount();
+  if (friends.length === 0) {
+    return <NoFriends />;
+  }
+  return (
+    <div>
+      <span>{onlineCount} online</span>
+      {friends.map((friend) => (
+        <FriendListCard key={friend.id} friend={friend} />
+      ))}
+      <MessageButton />
+    </div>
+  );
+}
+```
+[Смотрите этот пример в React Compiler Playground](https://playground.react.dev/#N4Igzg9grgTgxgUxALhAMygOzgFwJYSYAEAYjHgpgCYAyeYOAFMEWuZVWEQL4CURwADrEicQgyKEANnkwIAwtEw4iAXiJQwCMhWoB5TDLmKsTXgG5hRInjRFGbXZwB0UygHMcACzWr1ABn4hEWsYBBxYYgAeADkIHQ4uAHoAPksRbisiMIiYYkYs6yiqPAA3FMLrIiiwAAcAQ0wU4GlZBSUcbklDNqikusaKkKrgR0TnAFt62sYHdmp+VRT7SqrqhOo6Bnl6mCoiAGsEAE9VUfmqZzwqLrHqM7ubolTVol5eTOGigFkEMDB6u4EAAhKA4HCEZ5DNZ9ErlLIWYTcEDcIA)
+
+Компилятор React автоматически применяет эквивалент ручной мемоизации, гарантируя, что при изменении состояния перерисовываются только соответствующие части приложения, что иногда называют «мелкозернистой реактивностью». В приведенном выше примере React Compiler определяет, что возвращаемое значение `<FriendListCard />` может быть повторно использовано даже при изменении `friends`, и может избежать повторного создания этого JSX _и_ избежать повторного рендеринга `<MessageButton>` при изменении count.
+
+#### Затратные вычисления также меморизуются
+
+React Compiler также может автоматически меморизовать затратные вычисления, используемые во время рендеринга:
+
+```js
+// **Не** меморизуется React Compiler, так как это не компонент и не хук
+function expensivelyProcessAReallyLargeArrayOfObjects() { /* ... */ }
+
+// Запоминается React Compiler, так как это компонент
+function TableContainer({ items }) {
+  // Этот вызов функции будет запомнен:
+  const data = expensivelyProcessAReallyLargeArrayOfObjects(items);
+  // ...
+}
+```
+[Смотрите этот пример в React Compiler Playground](https://playground.react.dev/#N4Igzg9grgTgxgUxALhAejQAgFTYHIQAuumAtgqRAJYBeCAJpgEYCemASggIZyGYDCEUgAcqAGwQwANJjBUAdokyEAFlTCZ1meUUxdMcIcIjyE8vhBiYVECAGsAOvIBmURYSonMCAB7CzcgBuCGIsAAowEIhgYACCnFxioQAyXDAA5gixMDBcLADyzvlMAFYIvGAAFACUmMCYaNiYAHStOFgAvk5OGJgAshTUdIysHNy8AkbikrIKSqpaWvqGIiZmhE6u7p7ymAAqXEwSguZcCpKV9VSEFBodtcBOmAYmYHz0XIT6ALzefgFUYKhCJRBAxeLcJIsVIZLI5PKFYplCqVa63aoAbm6u0wMAQhFguwAPPRAQA+YAfL4dIloUmBMlODogDpAA)
+
+Однако, если `expensivelyProcessAReallyLargeArrayOfObjects` действительно является дорогостоящей функцией, вам, возможно, стоит рассмотреть возможность реализации собственной мемоизации вне React, поскольку:
+
+- React Compiler мемоизирует только компоненты и хуки React, а не каждую функцию
+- Мемоизация React Compiler не распространяется на несколько компонентов или хуков
+
+Таким образом, если `expensivelyProcessAReallyLargeArrayOfObjects` использовалась во многих разных компонентах, даже если передавались точно такие же элементы, этот дорогостоящий вычисление выполнялось бы повторно. Мы рекомендуем сначала провести [профилирование](reference/react/useMemo#how-to-tell-if-a-calculation-is-expensive), чтобы убедиться, что вычисление действительно является таким дорогостоящим, прежде чем усложнять код.
+
+## Стоит ли попробовать компилятор?
+
+Мы призываем всех начать использовать React Compiler. Хотя на сегодняшний день компилятор по-прежнему является опциональным дополнением к React, в будущем некоторые функции могут потребовать его для полноценной работы.
+
+### Безопасно ли его использовать?
+
+React Compiler сейчас стабилен и прошел тщательное тестирование в производственной среде. Хотя он уже используется в производственной среде такими компаниями, как Meta, внедрение компилятора в производственную среду вашего приложения будет зависеть от состояния вашего кода и того, насколько точно вы следовали [Правилам React](/reference/rules).
+
+## Какие инструменты сборки поддерживаются?
+
+React Compiler можно установить с помощью [нескольких инструментов сборки](/learn/react-compiler/installation), таких как Babel, Vite, Metro и Rsbuild.
+
+React Compiler — это, в первую очередь, облегченный плагин для Babel, обернутый вокруг ядра компилятора, которое было разработано так, чтобы быть независимым от самого Babel. Хотя первоначальная стабильная версия компилятора останется в основном плагином Babel, мы работаем с командами swc и [oxc](https://github.com/oxc-project/oxc/issues/10048) над созданием первоклассной поддержки React Compiler, чтобы в будущем вам не пришлось снова добавлять Babel в свои конвейеры сборки.
+
+Пользователи Next.js могут включить React Compiler, запускаемый swc, используя версию [v15.3.1](https://github.com/vercel/next.js/releases/tag/v15.3.1) и выше.
+
+## Что делать с useMemo, useCallback и React.memo?
+
+По умолчанию React Compiler будет меморизировать ваш код на основе своего анализа и эвристики. В большинстве случаев эта меморизация будет столь же точной, а то и более точной, чем то, что вы могли бы написать сами.
+
+Однако в некоторых случаях разработчикам может потребоваться больший контроль над меморизацией. Хуки `useMemo` и `useCallback` можно продолжать использовать с React Compiler в качестве запасного варианта, чтобы контролировать, какие значения меморизируются. Типичный случай использования — когда меморизированное значение используется в качестве зависимости эффекта, чтобы гарантировать, что эффект не срабатывает повторно, даже если его зависимости не изменяются существенным образом.
+
+Для нового кода мы рекомендуем полагаться на компилятор в вопросах мемоизации и использовать `useMemo`/`useCallback` там, где это необходимо для точного контроля.
+
+Для существующего кода мы рекомендуем либо оставить существующую мемоизацию на месте (ее удаление может изменить результат компиляции), либо тщательно протестировать код перед удалением мемоизации.
+
+## Попробуйте React Compiler
+
+Этот раздел поможет вам начать работу с React Compiler и понять, как эффективно использовать его в своих проектах.
+
+* **[Установка](/learn/react-compiler/installation)** — Установите React Compiler и настройте его для ваших инструментов сборки
+* **[Совместимость с версиями React](/reference/react-compiler/target)** — Поддержка React 17, 18 и 19
+* **[Настройка](/reference/react-compiler/configuration)** — настройте компилятор под свои конкретные нужды
+* **[Постепенное внедрение](/learn/react-compiler/incremental-adoption)** — стратегии постепенного внедрения компилятора в существующие кодовые базы
+* **[Отладка и устранение неполадок](/learn/react-compiler/debugging)** — выявление и устранение проблем при использовании компилятора
+* **[Компиляция библиотек](/reference/react-compiler/compiling-libraries)** — лучшие практики по распространению скомпилированного кода
+* **[Справочник API](/reference/react-compiler/configuration)** — Подробная документация по всем параметрам конфигурации
+
+## Дополнительные ресурсы
+
+В дополнение к этой документации мы рекомендуем посетить [Рабочую группу React Compiler](https://github.com/reactwg/react-compiler) для получения дополнительной информации и участия в обсуждениях о компиляторе.

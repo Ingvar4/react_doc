@@ -1,0 +1,388 @@
+---
+title: Передача пропсов в компонент
+description: Компоненты React используют *пропсы* для взаимодействия друг с другом. Каждый родительский компонент может передавать некоторую информацию своим дочерним компонентам, предоставляя им пропсы. Пропсы могут напоминать атрибуты HTML, но через них можно передавать любые значения JavaScript, включая объекты, массивы и функции.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+* Как передавать props компоненту
+* Как считывать props из компонента
+* Как задавать значения по умолчанию для props
+* Как передавать JSX компоненту
+* Как props меняются со временем
+</Callout>
+
+## Знакомые props {/*familiar-props*/}
+
+Props — это информация, которую вы передаете тегу JSX. Например, `className`, `src`, `alt`, `width` и `height` — это некоторые из пропсов, которые вы можете передать в `<img>`:
+
+<Sandpack code={
+`function Avatar() {
+    return (
+      <img
+        className="avatar"
+        src="https://react.dev/images/docs/scientists/1bX5QH6.jpg"
+        alt="Lin Lanying"
+        style={{
+          margin: '20px', 
+          borderRadius: "50%",
+          height: '120px'
+        }}
+      />
+    );
+  }
+
+  export default function Profile() {
+    return (
+      <Avatar />
+    );
+  }`}
+/>
+
+Пропсы, которые можно передать тегу `<img>`, являются предопределенными (ReactDOM соответствует [стандарту HTML](https://www.w3.org/TR/html52/semantics-embedded-content.html#the-img-element)). Но вы можете передавать любые пропсы *своим собственным* компонентам, таким как `<Avatar>`, чтобы настраивать их. Вот как это сделать!
+
+## Передача пропсов компоненту {/*передача-пропсов-компоненту*/}
+
+В этом коде компонент `Profile` не передает никаких пропсов своему дочернему компоненту `Avatar`:
+
+```js
+export default function Profile() {
+  return (
+    <Avatar />
+  );
+}
+```
+
+Вы можете передать `Avatar` некоторые пропсы в два этапа.
+
+### Шаг 1: Передача пропсов дочернему компоненту {/*step-1-pass-props-to-the-child-component*/}
+
+Сначала передайте некоторые пропсы в `Avatar`. Например, давайте передадим два пропса: `person` (объект) и `size` (число):
+
+```js
+export default function Profile() {
+  return (
+    <Avatar
+      person={{ name: 'Lin Lanying', imageId: '1bX5QH6' }}
+      size={100}
+    />
+  );
+}
+```
+
+<Callout type='idea'>
+Если двойные фигурные скобки после `person=` сбивают вас с толку, вспомните 
+[что это просто объект](/learn/javascript-in-jsx-with-curly-braces#using-double-curlies-css-and-other-objects-in-jsx) внутри фигурных скобок JSX.
+</Callout>
+
+Теперь вы можете прочитать эти пропсы внутри компонента `Avatar`.
+
+### Шаг 2: Чтение пропсов внутри дочернего компонента {/*step-2-read-props-inside-the-child-component*/}
+
+Вы можете прочитать эти пропсы, перечислив их имена `person, size`, разделенные запятыми, внутри `({` и `})` сразу после `function Avatar`. Это позволяет использовать их внутри кода `Avatar`, как переменные.
+
+```js
+function Avatar({ person, size }) {
+  // person и size доступны здесь
+}
+```
+
+Добавьте в `Avatar` логику, использующую пропсы `person` и `size` для рендеринга, и все готово.
+
+Теперь вы можете настроить `Avatar` для рендеринга разными способами с помощью различных пропсов. Попробуйте изменить значения!
+
+```js tab="Tab 1"
+//App.js
+import { getImageUrl } from './utils.js';
+
+function Avatar({ person, size }) {
+  return (
+    <img
+      className="avatar"
+      src={getImageUrl(person)}
+      alt={person.name}
+      width={size}
+      height={size}
+    />
+  );
+}
+
+export default function Profile() {
+  return (
+    <div>
+      <Avatar
+        size={100}
+        person={{
+          name: 'Katsuko Saruhashi',
+          imageId: 'YfeOqp2'
+        }}
+      />
+      <Avatar
+        size={80}
+        person={{
+          name: 'Aklilu Lemma',
+          imageId: 'OKS67lh'
+        }}
+      />
+      <Avatar
+        size={50}
+        person={{
+          name: 'Lin Lanying',
+          imageId: '1bX5QH6'
+        }}
+      />
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+//utils.js
+export function getImageUrl(person, size = 's') {
+  return (
+    'https://react.dev/images/docs/scientists/' +
+    person.imageId +
+    size +
+    '.jpg'
+  );
+}
+```
+
+Пропсы позволяют рассматривать родительские и дочерние компоненты независимо друг от друга. Например, вы можете изменить пропсы `person` или `size` внутри `Profile`, не задумываясь о том, как их использует `Avatar`. Аналогично, вы можете изменить то, как `Avatar` использует эти пропсы, не обращая внимания на `Profile`.
+
+Вы можете представлять пропсы как « 
+ручки», которые можно настраивать. Они выполняют ту же роль, что и аргументы для функций — фактически, пропсы _являются_ единственным аргументом вашего компонента! Функции компонентов React принимают один аргумент — объект `props`:
+
+```js
+function Avatar(props) {
+  let person = props.person;
+  let size = props.size;
+  // ...
+}
+```
+
+Обычно вам не нужен весь объект `props` целиком, поэтому вы деструктурируете его на отдельные пропсы.
+
+<Callout type='idea'>
+**Не пропустите пару фигурных скобок `{` и `}`** внутри `(` и `)` при объявлении пропсов:
+
+```js
+function Avatar({ person, size }) {
+  // ...
+}
+```
+
+Этот синтаксис называется [«деструктурированием»](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Unpacking_fields_from_objects_passed_as_a_function_parameter) и эквивалентен чтению свойств из параметра функции:
+
+```js
+function Avatar(props) {
+  
+let person = props.person;
+  let size = props.size;
+  // ...
+}
+```
+</Callout>
+
+## Указание значения по умолчанию для свойства {/*specifying-a-default-value-for-a-prop*/}
+
+Если вы хотите присвоить проп значению по умолчанию, которое будет использоваться в случае, если значение не указано, вы можете сделать это с помощью деструктурирования, поместив `=` и значение по умолчанию сразу после параметра:
+
+```js
+function Avatar({ person, size = 100 }) {
+  // ...
+}
+```
+
+Теперь, если `<Avatar person={...} />` рендерится без пропса `size`, `size` будет установлен в `100`.
+
+Значение по умолчанию используется только в том случае, если проп `size` отсутствует или если вы передаете `size={undefined}`. Но если вы передаете `size={null}` или `size={0}`, значение по умолчанию **не** будет использоваться.
+
+## Передача пропсов с помощью синтаксиса развертки JSX {/*передача-пропсов-с-помощью-синтаксиса-развертки-jsx*/}
+
+Иногда передача пропсов становится очень повторяющейся:
+
+```js
+function Profile({ person, size, isSepia, thickBorder }) {
+  return (
+    <div className="card">
+      <Avatar
+        person={person}
+        size={size}
+        isSepia={isSepia}
+        thickBorder={thickBorder}
+      />
+    </div>
+  );
+}
+```
+
+В повторяющемся коде нет ничего плохого — он может быть более читабельным. Но иногда вы можете ценить лаконичность. Некоторые компоненты передают все свои пропсы своим дочерним элементам, как это делает `Profile` с `Avatar`. Поскольку они не используют ни один из своих пропсов напрямую, имеет смысл использовать более лаконичный синтаксис «распространения»:
+
+```js
+function Profile(props) {
+  
+return (
+    <div className="card">
+      <Avatar {...props} />
+    </div>
+  );
+}
+```
+
+Это передает все пропсы `Profile` в `Avatar`, не перечисляя каждое из их имен.
+
+**Используйте синтаксис spread с осторожностью.** Если вы используете его в каждом втором компоненте, то что-то не так. Часто это указывает на то, что вам следует разделить компоненты и передавать дочерние элементы в виде JSX. Подробнее об этом далее!
+
+## Передача JSX в качестве дочерних элементов {/*passing-jsx-as-children*/}
+
+Часто встречается вложение встроенных тегов браузера:
+
+```js
+<div>
+  <img />
+</div>
+```
+
+Иногда вам захочется вложить свои собственные компоненты таким же образом:
+
+```js
+<Card>
+  <Avatar />
+</Card>
+```
+
+Когда вы вкладываете контент внутрь тега JSX, родительский компонент получит этот контент в виде проп `children`. Например, компонент `Card` ниже получит проп `children`, установленный в значение `<Avatar />`, и отобразит его в оборачивающем div:
+
+```js tab="Tab 1"
+//App.js
+import Avatar from './Avatar.js';
+
+function Card({ children }) {
+  return (
+    <div className="card">
+      {children}
+    </div>
+  );
+}
+
+export default function Profile() {
+  return (
+    <Card>
+      <Avatar
+        size={100}
+        person={{
+          name: 'Katsuko Saruhashi',
+          imageId: 'YfeOqp2'
+        }}
+      />
+    </Card>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Avatar.js
+import { getImageUrl } from './utils.js';
+
+export default function Avatar({ person, size }) {
+  return (
+    <img
+      className="avatar"
+      src={getImageUrl(person)}
+      alt={person.name}
+      width={size}
+      height={size}
+    />
+  );
+}
+```
+
+```js tab="Tab 3"
+//utils.js
+export function getImageUrl(person, size = 's') {
+  return (
+    'https://react.dev/images/docs/scientists/' +
+    person.imageId +
+    size +
+    '.jpg'
+  );
+}
+```
+
+Попробуйте заменить `<Avatar>` внутри `<Card>` на какой-нибудь текст, чтобы увидеть, как компонент `Card` может обернуть любое вложенное содержимое. Ему не нужно «знать», что именно рендерится внутри него. Вы будете встречать этот гибкий паттерн во многих местах.
+
+Можно представить себе компонент с проп `children` как имеющий «отверстие», которое может быть «заполнено» его родительскими компонентами произвольным JSX. Вы будете часто использовать проп `children` для визуальных оболочек: панелей, сетки и т. д.
+
+<img src="/images/i_children-prop.png" alt="1" style={{ height: 330 }} />
+
+## Как пропсы меняются со временем {/*how-props-change-over-time*/}
+
+Компонент `Clock`, приведенный ниже, получает два пропса от своего родительского компонента: `color` и `time`. (Код родительского компонента опущен, поскольку он использует [state](/learn/state-a-components-memory), в который мы пока не будем углубляться.)
+
+```js tab="Tab 1"
+//Clock.js
+export default function Clock({ color, time }) {
+  return (
+    <h1 style={{ color: color }}>
+      {time}
+    </h1>
+  );
+}
+```
+
+```js tab="Tab 2"
+//App.js
+import { useState, useEffect } from 'react';
+import Clock from './Clock.js';
+
+function useTime() {
+  const [time, setTime] = useState(() => new Date());
+  
+useEffect(() => {
+    const id = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return time;
+}
+
+export default function App() {
+  const time = useTime();
+  const [color, setColor] = useState('lightcoral');
+  
+return (
+    <div>
+      <p>
+        Выберите цвет:{' '}
+        <select value={color} onChange={e => setColor(e.target.value)}>
+          <option value="lightcoral">lightcoral</option>
+          <option value="midnightblue">midnightblue</option>
+          <option value="rebeccapurple">rebeccapurple</option>
+        </select>
+      </p>
+      <Clock color={color} time={time.toLocaleTimeString()} />
+    </div>
+  );
+}
+```
+
+Этот пример иллюстрирует, что **компонент может получать разные пропсы с течением времени.** Пропсы не всегда статичны! Здесь проп `time` меняется каждую секунду, а проп `color` меняется, когда вы выбираете другой цвет. Пропсы отражают данные компонента в любой момент времени, а не только в начале.
+
+Однако пропсы являются [неизменяемыми](https://en.wikipedia.org/wiki/Immutable_object) — термин из информатики, означающий «неизменяемый». Когда компоненту необходимо изменить свои пропсы (например, в ответ на взаимодействие пользователя или новые данные), ему придется «попросить» свой родительский компонент передать ему _другие пропсы_ — новый объект! Его старые props будут отброшены, и в конечном итоге движок JavaScript освободит занятую ими память.
+
+**Не пытайтесь «изменять props».**
+ 
+Когда вам нужно отреагировать на ввод пользователя (например, изменить выбранный цвет), вам нужно будет «установить состояние», о чем вы можете узнать в [Состояние: память компонента.](/learn/state-a-components-memory)
+
+
+## Вывод
+
+* Чтобы передать props, добавьте их в JSX, так же как вы делали бы с атрибутами HTML.
+* Чтобы прочитать props, используйте синтаксис деструктурирования `function Avatar({ person, size })`.
+* Вы можете указать значение по умолчанию, например `size = 100`, которое используется для отсутствующих и `undefined` props.
+* Вы можете перенаправить все props с помощью синтаксиса распространения JSX `<Avatar {...props} />`, но не злоупотребляйте им!
+* Вложенный JSX, такой как `<Card><Avatar /></Card>`, будет отображаться как prop `children` компонента `Card`.
+* Пропсы — это снимки состояния на определенный момент времени, доступные только для чтения: при каждом рендеринге получается новая версия пропсов.
+* Вы не можете изменять пропсы. Если вам нужна интерактивность, вам нужно будет установить состояние.

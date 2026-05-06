@@ -1,0 +1,152 @@
+---
+title: Добавление react в существующий проект
+description: Если вы хотите добавить интерактивность в свой существующий проект, вам не нужно переписывать его на React. Добавьте React в свой существующий стек и отображайте интерактивные компоненты React где угодно.
+---
+
+<Callout>
+
+**Для локальной разработки вам необходимо установить [Node.js](https://nodejs.org/en/).** Хотя вы можете [попробовать React](/docs/installation#попробуйте-react) онлайн или с помощью простой HTML-страницы, в реальности большинство инструментов JavaScript, которые вы захотите использовать для разработки, требуют Node.js.
+
+</Callout>
+
+## Использование React для целого подмаршрута вашего существующего веб-сайта 
+
+Допустим, у вас есть существующее веб-приложение на `example.com`, созданное с использованием другой серверной технологии (например, Rails), и вы хотите полностью реализовать все маршруты, начинающиеся с `example.com/some-app/`, с помощью React.
+
+Вот как мы рекомендуем это настроить:
+
+1. **Создайте React-часть вашего приложения**, используя один из [фреймворков на основе React](/docs/installation/creating-with-freamwork).
+
+2. **Укажите `/some-app` в качестве *базового пути*** в конфигурации вашего фреймворка (вот как это сделать: [Next.js](https://nextjs.org/docs/app/api-reference/config/next-config-js/basePath), [Gatsby](https://www.gatsbyjs.com/docs/how-to/previews-deploys-hosting/path-prefix/)).
+
+3. **Настройте свой сервер или прокси** так, чтобы все запросы в `/some-app/` обрабатывались вашим React-приложением.
+
+Это гарантирует, что React-часть вашего приложения сможет [воспользоваться лучшими практиками](/learn/build-a-react-app-from-scratch#consider-using-a-framework), встроенными в эти фреймворки.
+
+Многие фреймворки на основе React являются полнофункциональными и позволяют вашему React-приложению использовать преимущества сервера. Однако вы можете использовать тот же подход, даже если не можете или не хотите запускать JavaScript на сервере. В этом случае используйте экспорт HTML/CSS/JS ([`next export` output](https://nextjs.org/docs/advanced-features/static-html-export) для Next.js, по умолчанию для Gatsby) по адресу `/some-app/`.
+
+## Использование React для части существующей страницы 
+
+Допустим, у вас есть существующая страница, созданная с использованием другой технологии (серверной, например, Rails, или клиентской, например, Backbone), и вы хотите отобразить интерактивные компоненты React где-нибудь на этой странице. Это распространенный способ интеграции React — фактически, именно так выглядело большинство примеров использования React на Meta на протяжении многих лет!
+
+Это можно сделать в два этапа:
+
+1. **Настройте среду JavaScript**, которая позволит вам использовать [синтаксис JSX](/learn/writing-markup-with-jsx), разделите ваш код на модули с помощью синтаксиса [`import`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import) / [`export`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export) и используйте пакеты (например, React) из реестра пакетов [npm](https://www.npmjs.com/).
+
+2. **Отобразите ваши компоненты React** там, где вы хотите их видеть на странице.
+
+Точный подход зависит от существующей конфигурации вашей страницы, поэтому давайте рассмотрим некоторые детали.
+
+### Шаг 1: Настройка модульной среды JavaScript {/*шаг-1-настройка-модульной-среды-JavaScript*/}
+
+Модульная среда JavaScript позволяет писать компоненты React в отдельных файлах, а не весь код в одном файле. Она также позволяет использовать все замечательные пакеты, опубликованные другими разработчиками в реестре [npm](https://www.npmjs.com/) — включая сам React! Способ настройки зависит от вашей существующей конфигурации:
+
+* **Если ваше приложение уже разделено на файлы, использующие операторы `import`,** попробуйте использовать уже имеющуюся конфигурацию. Проверьте, не вызывает ли написание `<div />` в вашем JS-коде синтаксическую ошибку. Если возникает синтаксическая ошибка, вам может потребоваться [преобразовать ваш JavaScript-код с помощью Babel](https://babeljs.io/setup) и включить [пресет Babel React](https://babeljs.io/docs/babel-preset-react) для использования JSX.
+
+* **Если в вашем приложении нет существующей настройки для компиляции JavaScript-модулей,** настройте её с помощью [Vite](https://vite.dev/). Сообщество Vite поддерживает [множество интеграций с бэкенд-фреймворками](https://github.com/vitejs/awesome-vite#integrations-with-backends), включая Rails, Django и Laravel. Если вашего бэкенд-фреймворка нет в списке, [следуйте этому руководству](https://vite.dev/guide/backend-integration.html), чтобы вручную интегрировать сборки Vite с вашим бэкендом.
+
+Чтобы проверить работоспособность вашей конфигурации, выполните эту команду в папке вашего проекта:
+
+```bash
+
+npm install react react-dom
+
+```
+
+Затем добавьте эти строки кода в начало вашего основного файла JavaScript (он может называться `index.js` или `main.js`):
+
+```html
+<!DOCTYPE html>
+<html>
+  <head><title>My app</title></head>
+  <body>
+    <!-- Содержимое вашей существующей страницы (в этом примере оно заменяется) -->
+    <div id="root"></div>
+  </body>
+</html>
+```
+
+```js src/index.js active
+import { createRoot } from 'react-dom/client';
+
+// Очистить существующее содержимое HTML
+document.body.innerHTML = '<div id="app"></div>';
+
+// Отобразить реакт компонент
+const root = createRoot(document.getElementById('app'));
+root.render(<h1>Hello, world</h1>);
+```
+
+Если бы все содержимое вашей страницы было заменено на "Hello, world!", все бы заработало! Читайте дальше.
+
+<Callout>
+
+Интеграция модульной среды JavaScript в существующий проект впервые может показаться сложной, но это того стоит! Если вы застрянете, попробуйте наши ресурсы сообщества или [чат Vite](https://chat.vite.dev/).
+
+</Callout>
+
+### Шаг 2: Отображение компонентов React в любом месте страницы
+
+На предыдущем шаге вы добавили этот код в начало вашего основного файла:
+
+```js
+import { createRoot } from 'react-dom/client';
+
+// Очистка существующего HTML-контента
+document.body.innerHTML = '<div id="app"></div>';
+
+// Вместо этого отобразите ваш компонент React
+const root = createRoot(document.getElementById('app'));
+
+root.render(<h1>Hello, world</h1>);
+
+```
+
+Конечно, вам на самом деле не нужно очищать существующий HTML-контент!
+
+Удалите этот код.
+
+Вместо этого вам, вероятно, нужно отображать ваши компоненты React в определенных местах вашего HTML. Откройте свою HTML-страницу (или шаблоны сервера, которые её генерируют) и добавьте уникальный атрибут [`id`](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id) к любому тегу, например:
+
+```html
+<!-- ... где-то в вашем HTML ... -->
+<nav id="navigation"></nav>
+<!-- ... ещё HTML ... -->
+```
+
+Это позволит вам найти этот HTML-элемент с помощью [`document.getElementById`](https://developer.mozilla.org/en-US/docs/Web/API/Document/getElementById) и передать его в [`createRoot`](/reference/react-dom/client/createRoot), чтобы вы могли отобразить свой собственный компонент React внутри:
+
+```html public/index.html
+<!DOCTYPE html>
+<html>
+  <head><title>My app</title></head>
+  <body>
+    <p>This paragraph is a part of HTML.</p>
+    <nav id="navigation"></nav>
+    <p>This paragraph is also a part of HTML.</p>
+  </body>
+</html>
+```
+
+```js src/index.js active
+import { createRoot } from 'react-dom/client';
+
+function NavigationBar() {
+  return <h1>Hello from React!</h1>;
+}
+
+const domNode = document.getElementById('navigation');
+const root = createRoot(domNode);
+root.render(<NavigationBar />);
+```
+
+Обратите внимание, что исходное содержимое HTML из `index.html` сохраняется, но ваш собственный компонент React `NavigationBar` теперь отображается внутри `<nav id="navigation">` из вашего HTML. Прочитайте [документацию по использованию `createRoot`](/reference/react-dom/client/createRoot#rendering-a-page-partially-built-with-react), чтобы узнать больше о рендеринге компонентов React внутри существующей HTML-страницы.
+
+При внедрении React в существующий проект обычно начинают с небольших интерактивных компонентов (например, кнопок), а затем постепенно «двигаются вверх», пока в конечном итоге вся ваша страница не будет построена с использованием React. Если вы когда-либо достигнете этой точки, мы рекомендуем сразу же перейти на [фреймворк React](/docs/installation/creating-with-freamwork), чтобы получить максимальную отдачу от React.
+
+
+## Использование React Native в существующем нативном мобильном приложении {/*using-react-native-in-an-existing-native-mobile-app*/}
+
+[React Native](https://reactnative.dev/) также можно интегрировать в существующие нативные приложения постепенно. Если у вас есть существующее нативное приложение для Android (Java или Kotlin) или iOS (Objective-C или Swift), [следуйте этому руководству](https://reactnative.dev/docs/integration-with-existing-apps), чтобы добавить в него экран React Native.
+
+---

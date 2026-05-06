@@ -1,0 +1,73 @@
+---
+title: Фреймворки React
+description: Если вы хотите создать новое приложение или сайт на React, мы рекомендуем начать с фреймворков.
+---
+
+
+Если у вашего приложения есть ограничения, с которыми плохо справляются существующие фреймворки, вы предпочитаете создать собственный framework или просто хотите изучить основы React-приложения, вы можете [создать React-приложение с нуля](/docs/installation/build-a-react-app-from-scratch).
+
+## Full-stack frameworks 
+
+Рекомендуемые фреймворки поддерживают все функции, которые нужны вам для развёртывания и масштабирования приложения в production. В них интегрированы самые новые возможности React, и они используют преимущества архитектуры React.
+
+<Callout>
+#### Full-stack frameworks не требуют сервера.
+
+Все фреймворки на этой странице поддерживают client-side rendering ([CSR](https://developer.mozilla.org/en-US/docs/Glossary/CSR)), single-page apps ([SPA](https://developer.mozilla.org/en-US/docs/Glossary/SPA)) и static-site generation ([SSG](https://developer.mozilla.org/en-US/docs/Glossary/SSG)). Эти приложения можно развёртывать в [CDN](https://developer.mozilla.org/en-US/docs/Glossary/CDN) или в сервисе статического хостинга без сервера. Кроме того, эти фреймворки позволяют добавлять server-side rendering для отдельных маршрутов, когда это имеет смысл для вашего случая.
+
+Это позволяет начать с client-only приложения, а если ваши потребности позже изменятся, вы сможете по желанию использовать server features для отдельных маршрутов без переписывания приложения.
+</Callout>
+
+### Next.js (App Router)
+
+**[App Router в Next.js](https://nextjs.org/docs) — это React framework, который в полной мере использует архитектуру React, чтобы создавать full-stack React apps.**
+
+```bash
+
+npx create-next-app@latest
+
+```
+
+Next.js поддерживается [Vercel](https://vercel.com/). Вы можете [развернуть приложение Next.js](https://nextjs.org/docs/app/building-your-application/deploying) у любого хостинг-провайдера, который поддерживает Node.js или Docker containers, либо на собственном сервере. Next.js также поддерживает [static export](https://nextjs.org/docs/app/building-your-application/deploying/static-exports), для которого не требуется сервер.
+
+### React Router (v7) {/*react-router-v7*/}
+
+**[React Router](https://reactrouter.com/start/framework/installation) — самая популярная routing library для React, и её можно использовать вместе с Vite, чтобы создать full-stack React framework**. Он делает акцент на стандартных Web APIs и имеет несколько [готовых шаблонов для развёртывания](https://github.com/remix-run/react-router-templates) для разных JavaScript runtimes и платформ.
+
+Чтобы создать новый проект на базе React Router framework, выполните:
+
+```bash
+
+npx create-react-router@latest
+
+```
+
+React Router поддерживается [Shopify](https://www.shopify.com).
+
+### Expo (для native apps) 
+
+**[Expo](https://expo.dev/) — это React framework, который позволяет создавать универсальные Android-, iOS- и web-приложения с по-настоящему native UI.** Он предоставляет SDK для [React Native](https://reactnative.dev/), который упрощает работу с native-частями. Чтобы создать новый проект Expo, выполните:
+
+
+```bash
+
+npx create-expo-app@latest
+
+```
+
+Если вы только начинаете работать с Expo, посмотрите [учебник по Expo](https://docs.expo.dev/tutorial/introduction/).
+
+Expo поддерживается [Expo (компанией)](https://expo.dev/about). Создавать приложения с помощью Expo можно бесплатно, и вы можете отправлять их в магазины приложений Google и Apple без ограничений. Кроме того, Expo предоставляет дополнительные платные cloud services по желанию.
+
+## Другие фреймворки
+
+Есть и другие перспективные фреймворки, которые движутся в сторону нашего видения full stack React:
+
+- [TanStack Start (Beta)](https://tanstack.com/start/): TanStack Start — это full-stack React framework на базе TanStack Router. Он предоставляет full-document SSR, streaming, server functions, bundling и многое другое с использованием таких инструментов, как Nitro и Vite.
+- [RedwoodSDK](https://rwsdk.com/): Redwood — это full stack React framework с большим количеством предустановленных пакетов и конфигураций, что облегчает создание full-stack web applications.
+
+## Начать с нуля
+
+Если у вашего приложения есть ограничения, с которыми плохо справляются существующие фреймворки, вы предпочитаете создать собственный фреймворк или просто хотите изучить основы React-приложения, существуют и другие варианты начала React-проекта.
+
+Начало с нуля даёт больше гибкости, но требует, чтобы вы сами выбрали инструменты для routing, data fetching и других распространённых сценариев использования. Это очень похоже на создание собственного фреймворка, вместо использования уже существующего. Рекомендуемые нами фреймворки уже имеют встроенные решения для этих задач.

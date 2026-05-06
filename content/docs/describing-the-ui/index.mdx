@@ -1,0 +1,388 @@
+---
+title: Описание UI
+description: React — это библиотека JavaScript для визуализации пользовательских интерфейсов (UI). Пользовательский интерфейс состоит из небольших элементов, таких как кнопки, текст и изображения. React позволяет объединять их в многократно используемые и вложенные компоненты. От веб-сайтов до мобильных приложений — всё, что отображается на экране, можно разбить на компоненты. В этой главе вы научитесь создавать, настраивать и отображать компоненты React в зависимости от условий.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+* [Как написать свой первый компонент React](/learn/your-first-component)
+* [Когда и как создавать файлы с несколькими компонентами](/learn/importing-and-exporting-components)
+* [Как добавлять разметку в JavaScript с помощью JSX](/learn/writing-markup-with-jsx)
+* [Как использовать фигурные скобки с JSX для доступа к функционалу JavaScript из ваших компонентов](/learn/javascript-in-jsx-with-curly-braces)
+* [Как настраивать компоненты с помощью props](/learn/passing-props-to-a-component)
+* [Как условно рендерить компоненты](/learn/conditional-rendering)
+* [Как отображать несколько компонентов одновременно](/learn/rendering-lists)
+* [Как избежать запутанных ошибок, сохраняя чистоту компонентов](/learn/keeping-components-pure)
+* [Почему полезно представлять ваш интерфейс в виде дерева](/learn/understanding-your-ui-as-a-tree)
+</Callout>
+
+## Ваш первый компонент {/*your-first-component*/}
+Приложения React строятся из изолированных частей пользовательского интерфейса, называемых *компонентами*. Компонент React — это функция JavaScript, которую можно дополнить разметкой. Компоненты могут быть как маленькими, как кнопка, так и большими, как целая страница. Вот компонент `Gallery`, отображающий три компонента `Profile`:
+
+<Sandpack code={
+`function Profile() {
+    return (
+      <img
+        src='https://react.dev/images/docs/scientists/MK3eW3As.jpg'
+        alt="Katherine Johnson"
+        style={{
+        margin: '0 10px 10px 0', 
+        height: '90px'
+        }}
+      />
+    );
+  }
+  export default function Gallery() {
+    return (
+      <section>
+        <h1>Amazing scientists</h1>
+        <Profile />
+        <Profile />
+        <Profile />
+      </section>
+    );
+  }`}
+/>
+
+## Импорт и экспорт компонентов {/*importing-and-exporting-components*/}
+Вы можете объявить множество компонентов в одном файле, но в больших файлах может быть сложно ориентироваться. Чтобы решить эту проблему, вы можете *экспортировать* компонент в отдельный файл, а затем *импортировать* этот компонент из другого файла:
+
+```js tab="Tab 1"
+//Gallery.js
+import Profile from './Profile.js';
+
+export default function Gallery() {
+  return (
+    <section>
+      <h1>Amazing scientists</h1>
+      <Profile />
+      <Profile />
+      <Profile />
+    </section>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Profile.js
+export default function Profile() {
+  return (
+    <img
+      src="https://react.dev/images/docs/scientists/QIrZWGIs.jpg"
+      alt="Alan L. Hart"
+    />
+  );
+}
+```
+
+## Написание разметки с помощью JSX {/*writing-markup-with-jsx*/}
+Каждый компонент React представляет собой функцию JavaScript, которая может содержать некоторую разметку, которую React отображает в браузере. Компоненты React используют расширение синтаксиса под названием JSX для представления этой разметки.
+ 
+JSX очень похож на HTML, но он немного строже и может отображать динамическую информацию.
+Если мы вставим существующую HTML-разметку в компонент React, это не всегда будет работать:
+
+<Sandpack code={
+`export default function TodoList() {
+    return (
+      // Это не совсем работает!
+      <h1>Задачи Хеди Ламарр</h1>
+      <img
+        src="https://react.dev/images/docs/scientists/yXOvdOSs.jpg"
+        alt="Хеди Ламарр"
+        class="photo"
+      >
+      <ul>
+        <li>Изобрести новые светофоры
+        <li>Репетировать сцену из фильма
+        <li>Усовершенствовать технологию спектра
+      </ul>
+    );
+  }`}
+/>
+
+Если у вас есть такой HTML-код, вы можете исправить его с помощью [конвертера](https://transform.tools/html-to-jsx):
+
+<Sandpack code={
+`export default function TodoList() {
+    return (
+      <>
+        <h1>Задачи Хеди Ламарр</h1>
+        <img
+          src="https://react.dev/images/docs/scientists/yXOvdOSs.jpg"
+          alt='Hedy Lamarr'
+          className="photo"
+          style={{height: '90px'}}
+        />
+        <ul>
+          <li>Изобрести новые светофоры</li>
+          <li>Репетировать сцену из фильма</li>
+          <li>Усовершенствовать технологию спектра</li>
+        </ul>
+      </>
+    );
+  }`}
+/>
+
+## JavaScript в JSX с фигурными скобками {/*javascript-in-jsx-with-curly-braces*/}
+JSX позволяет писать разметку, похожую на HTML, внутри файла JavaScript, сохраняя логику рендеринга и контент в одном месте. Иногда вам захочется добавить немного логики JavaScript или сослаться на динамическое свойство внутри этой разметки. В этой ситуации вы можете использовать фигурные скобки в JSX, чтобы 'открыть окно' в JavaScript:
+
+<Sandpack code={
+`const person = {
+    name: 'Gregorio Y. Zara',
+    theme: {
+      backgroundColor: 'black',
+      color: 'pink'
+    } 
+  };
+  export default function TodoList() {
+    return (
+      <div style={person.theme}>
+        <div style={{padding: '20px'}}>
+          <h1>Задачи {person.name}</h1>
+          <img
+            className="avatar"
+            src="https://react.dev/images/docs/scientists/7vQD0fPs.jpg"
+            style={{height: '90px', borderRadius: '50%'}}
+            alt='Gregorio Y. Zara'
+          />
+          <ul>
+            <li>Улучшить видеофон</li>
+            <li>Подготовить лекции по аэронавтике</li>
+            <li>Работать над двигателем, работающим на спирте</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }`}
+/>
+
+
+## Передача props компоненту {/*passing-props-to-a-component*/}
+Компоненты React используют *props* для взаимодействия друг с другом. Каждый родительский компонент может передавать некоторую информацию своим дочерним компонентам, предоставляя им props. Props могут напоминать вам атрибуты HTML, но через них можно передавать любое значение JavaScript, включая объекты, массивы, функции и даже JSX!
+
+```js tab="Tab 1"
+//App.js
+import { getImageUrl } from './utils.js'
+
+export default function Profile() {
+  return (
+    <Card>
+      <Avatar
+        size={100}
+        person={{
+          name: 'Katsuko Saruhashi',
+          imageId: 'YfeOqp2'
+        }}
+      />
+    </Card>
+  );
+}
+
+function Avatar({ person, size }) {
+  return (
+    <img
+      className="avatar"
+      src={getImageUrl(person)}
+      alt={person.name}
+      width={size}
+      height={size}
+    />
+  );
+}
+
+function Card({ children }) {
+  return (
+    <div className="card">
+      {children}
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+//utils.js
+export function getImageUrl(person, size = 's') {
+  return (
+    'https://react.dev/images/docs/scientists/' +
+    person.imageId +
+    size +
+    '.jpg'
+  );
+}
+```
+
+## Условный рендеринг {/*conditional-rendering*/}
+
+Вашим компонентам часто потребуется отображать разные элементы в зависимости от различных условий. В React вы можете условно рендерить JSX, используя синтаксис JavaScript, такой как операторы `if`, `&&` и `? :`.
+В этом примере оператор JavaScript `&&` используется для условного рендеринга галочки:
+
+<Sandpack code={
+`function Item({ name, isPacked }) {
+    return (
+      <li className="item">
+        {name} {isPacked && '✅'}
+      </li>
+    );
+  }
+  export default function PackingList() {
+    return (
+      <section>
+        <h1>Список вещей Салли Райд</h1>
+        <ul>
+          <Item
+            isPacked={true}
+            name="Космический скафандр"
+          />
+          <Item
+            isPacked={true}
+            name="Шлем с золотым листом"
+          />
+          <Item
+            isPacked={false}
+            name="Фото Там"
+          />
+        </ul>
+      </section>
+    );
+  }`}
+/>
+
+## Отображение списков {/*rendering-lists*/}
+Часто возникает необходимость отобразить несколько похожих компонентов из набора данных. Вы можете использовать функции JavaScript `filter()` и `map ()` в React для фильтрации и преобразования массива данных в массив компонентов.
+Для каждого элемента массива необходимо указать `key`. Обычно в качестве `key` используется ID из базы данных. Ключи позволяют React отслеживать место каждого элемента в списке, даже если список изменяется.
+
+```js tab="Tab 1"
+//App.js
+import { people } from './data.js';
+import { getImageUrl } from './utils.js';
+
+export default function List() {
+  const listItems = people.map(person =>
+    <li key={person.id}>
+      <img
+        src={getImageUrl(person)}
+        alt={person.name}
+      />
+      <p>
+        <b>{person.name}:</b>
+        {' ' + person.profession + ' '}
+        known for {person.accomplishment}
+      </p>
+    </li>
+  );
+  return (
+    <article>
+      <h1>Scientists</h1>
+      <ul>{listItems}</ul>
+    </article>
+  );
+}
+```
+
+```js tab="Tab 2"
+//data.js
+export const people = [{
+  id: 0,
+  name: 'Creola Katherine Johnson',
+  profession: 'mathematician',
+  accomplishment: 'spaceflight calculations',
+  imageId: 'MK3eW3A'
+}, {
+  id: 1,
+  name: 'Mario José Molina-Pasquel Henríquez',
+  profession: 'chemist',
+  accomplishment: 'discovery of Arctic ozone hole',
+  imageId: 'mynHUSa'
+}, {
+  id: 2,
+  name: 'Mohammad Abdus Salam',
+  profession: 'physicist',
+  accomplishment: 'electromagnetism theory',
+  imageId: 'bE7W1ji'
+}, {
+  id: 3,
+  name: 'Percy Lavon Julian',
+  profession: 'chemist',
+  accomplishment: 'pioneering cortisone drugs, steroids and birth control pills',
+  imageId: 'IOjWm71'
+}, {
+  id: 4,
+  name: 'Subrahmanyan Chandrasekhar',
+  profession: 'astrophysicist',
+  accomplishment: 'white dwarf star mass calculations',
+  imageId: 'lrWQx8l'
+}];
+```
+
+```js tab="Tab 3"
+//utils.js
+export function getImageUrl(person) {
+  return (
+    'https://react.dev/images/docs/scientists/' +
+    person.imageId +
+    's.jpg'
+  );
+}
+```
+
+## Сохранение чистоты компонентов {/*keeping-components-pure*/}
+
+Некоторые функции JavaScript являются *чистыми.* Чистая функция:
+* **Занимается только своими делами.** Она не изменяет никаких объектов или переменных, существовавших до ее вызова.
+* **Одинаковые входные данные — одинаковый результат.** При одинаковых входных данных чистая функция всегда должна возвращать один и тот же результат.
+Строго писать компоненты только как чистые функции позволяет избежать целого ряда запутанных ошибок и непредсказуемого поведения по мере роста кодовой базы. Вот пример нечистого компонента:
+
+<Sandpack code={
+`let guest = 0;
+  function Cup() {
+    // Плохо: изменение уже существующей переменной!
+    guest = guest + 1;
+    
+  return <h2>Чашка чая для гостя #{guest}</h2>;
+  }
+
+  export default function TeaSet() {
+    return (
+      <>
+        <Cup />
+        <Cup />
+        <Cup />
+      </>
+    );
+  }`}
+/>
+
+Вы можете сделать этот компонент чистым, передавая пропc вместо изменения существующей переменной:
+
+<Sandpack code={
+`function Cup({ guest }) {
+    return <h2>Чашка чая для гостя #{guest}</h2>;
+  }
+
+  export default function TeaSet() {
+    return (
+      <>
+        <Cup guest={1} />
+        <Cup guest={2} />
+        <Cup guest={3} />
+      </>
+    );
+  }`}
+/>
+
+## Ваш интерфейс как дерево {/*your-ui-as-a-tree*/}
+React использует деревья для моделирования отношений между компонентами и модулями.
+Дерево рендеринга React — это представление отношений родитель-потомок между компонентами.
+
+<img src="/images/generic_render_tree.png" alt="1" style={{ width: 400, height: 'auto' }} />
+
+Пример дерева рендеринга React.
+
+Компоненты, расположенные в верхней части дерева, рядом с корневым компонентом, считаются компонентами верхнего уровня. Компоненты без дочерних компонентов являются листьями. Такая классификация компонентов полезна для понимания потока данных и производительности рендеринга.
+Моделирование взаимосвязей между модулями JavaScript — еще один полезный способ понять работу вашего приложения. Мы называем это деревом зависимостей модулей.
+
+<img src="/images/generic_dependency_tree.png" alt="1" style={{ width: 400, height: 'auto' }} />
+
+Пример дерева зависимостей модулей.
+
+Дерево зависимостей часто используется инструментами сборки для объединения всего необходимого кода JavaScript, который клиент должен загрузить и отобразить. Большой размер пакета ухудшает пользовательский опыт в приложениях React. Понимание дерева зависимостей модулей помогает отлаживать такие проблемы.

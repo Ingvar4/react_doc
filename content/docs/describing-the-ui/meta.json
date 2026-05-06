@@ -1,0 +1,3 @@
+{
+  "pages": [ "your-first-component", "importing-and-exporting-components", "writing-markup-with-jsx", "javascript-in-jsx-with-curly-braces", "passing-props-to-a-component" ]
+}

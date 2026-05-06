@@ -1,0 +1,12 @@
+{
+  "pages": [ 
+    "---НАЧАЛО РАБОТЫ С REACT---", 
+    "learn", 
+    "installation", 
+    "setup", 
+    "react-compiler",
+
+    "---ИЗУЧЕНИЕ REACT---",
+    "describing-the-ui"
+  ]
+}
