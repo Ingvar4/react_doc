@@ -1,0 +1,244 @@
+---
+title: Понимание интерфейса пользователя как дерева
+description: Ваше приложение React приобретает очертания, и многие компоненты вложены друг в друга. Как React отслеживает структуру компонентов вашего приложения?
+---
+
+React, как и многие другие библиотеки пользовательского интерфейса, моделирует интерфейс в виде дерева. Представление вашего приложения в виде дерева помогает понять взаимосвязь между компонентами. Это понимание поможет вам отлаживать будущие концепции, такие как производительность и управление состоянием.
+
+<Callout>
+### Вы узнаете [!toc]
+
+* Как React «видит» структуры компонентов
+* Что такое дерево рендеринга и для чего оно полезно
+* Что такое дерево зависимостей модулей и для чего оно полезно
+</Callout>
+
+## Ваш интерфейс как дерево {/*your-ui-as-a-tree*/}
+
+Деревья — это модель взаимосвязей между элементами. Пользовательский интерфейс часто представляется с помощью древовидных структур. Например, браузеры используют древовидные структуры для моделирования HTML ([DOM](https://developer.mozilla.org/docs/Web/API/Document_Object_Model/Introduction)) и CSS ([CSSOM](https://developer.mozilla.org/docs/Web/API/CSS_Object_Model)) . Мобильные платформы также используют деревья для представления иерархии своих представлений.
+
+<img src="/images/preserving_state_dom_tree.webp" alt="1" style={{ height: 'auto' }} />
+
+React создает дерево пользовательского интерфейса из ваших компонентов. В этом примере дерево пользовательского интерфейса затем используется для рендеринга в DOM.
+
+Подобно браузерам и мобильным платформам, React также использует древовидные структуры для управления и моделирования взаимосвязей между компонентами в приложении React. Эти деревья являются полезными инструментами для понимания того, как данные проходят через приложение React, и как оптимизировать рендеринг и размер приложения.
+
+## Дерево рендеринга {/*the-render-tree*/}
+
+Одной из основных особенностей компонентов является возможность компоновки компонентов из других компонентов. По мере того как мы [вкладываем компоненты](/learn/your-first-component#nesting-and-organizing-components), у нас появляется понятие родительских и дочерних компонентов, где каждый родительский компонент сам может быть дочерним компонентом другого компонента.
+
+При рендеринге приложения React мы можем моделировать эту взаимосвязь в виде дерева, известного как дерево рендеринга.
+
+Вот приложение React, которое отображает вдохновляющие цитаты.
+
+```js tab="Tab 1"
+//App.js
+import FancyText from './FancyText';
+import InspirationGenerator from './InspirationGenerator';
+import Copyright from './Copyright';
+
+export default function App() {
+  return (
+    <>
+      <FancyText title text="Get Inspired App" />
+      <InspirationGenerator>
+        <Copyright year={2004} />
+      </InspirationGenerator>
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//FancyText.js
+export default function FancyText({title, text}) {
+  return title
+    ? <h1 className='fancy title'>{text}</h1>
+    : <h3 className='fancy cursive'>{text}</h3>
+}
+```
+
+```js tab="Tab 3"
+//InspirationGenerator.js
+import * as React from 'react';
+import quotes from './quotes';
+import FancyText from './FancyText';
+
+export default function InspirationGenerator({children}) {
+  const [index, setIndex] = React.useState(0);
+  const quote = quotes[index];
+  const next = () => setIndex((index + 1) % quotes.length);
+
+  return (
+    <>
+      <p>Your inspirational quote is:</p>
+      <FancyText text={quote} />
+      <button onClick={next}>Inspire me again</button>
+      {children}
+    </>
+  );
+}
+```
+
+```js tab="Tab 4"
+//Copyright.js
+export default function Copyright({year}) {
+  return <p className='small'>©️ {year}</p>;
+}
+```
+
+```js tab="Tab 5"
+//quotes.js
+export default [
+  "Don’t let yesterday take up too much of today.” — Will Rogers",
+  "Ambition is putting a ladder against the sky.",
+  "A joy that's shared is a joy made double.",
+  ];
+```
+
+<img src="/images/render_tree.png" alt="1" style={{ height: 'auto' }} />
+
+React создает *дерево рендеринга* — дерево пользовательского интерфейса, состоящее из отрендеренных компонентов.
+
+На основе примера приложения мы можем построить приведенное выше дерево рендеринга.
+
+Дерево состоит из узлов, каждый из которых представляет компонент. `App`, `FancyText`, `Copyright` — это лишь некоторые из узлов нашего дерева.
+
+Корневым узлом в дереве рендеринга React является [корневой компонент](/learn/importing-and-exporting-components#the-root-component-file) приложения. В данном случае корневым компонентом является `App`, и это первый компонент, который рендерит React. Каждая стрелка в дереве указывает от родительского компонента к дочернему компоненту.
+
+<Callout>
+#### Где находятся HTML-теги в дереве рендеринга? {/*where-are-the-html-elements-in-the-render-tree*/}
+
+Вы заметите, что в приведенном выше дереве рендеринга нет упоминания HTML-тегов, которые рендерит каждый компонент. Это связано с тем, что дерево рендеринга состоит только из [компонентов](learn/your-first-component#components-ui-building-blocks) React.
+
+React, как фреймворк пользовательского интерфейса, не зависит от платформы. На сайте react.dev мы демонстрируем примеры, которые рендерируются в веб-среде, где в качестве базовых элементов интерфейса используется HTML-разметка. Но приложение React с таким же успехом может отображаться на мобильной или настольной платформе, которые могут использовать другие элементы интерфейса, такие как [UIView](https://developer.apple.com/documentation/uikit/uiview) или [FrameworkElement](https://learn.microsoft.com/en-us/dotnet/api/system.windows.frameworkelement?view=windowsdesktop-7.0).
+
+Эти примитивы пользовательского интерфейса платформы не являются частью React. Деревья рендеринга React могут дать представление о нашем приложении React независимо от того, на какой платформе оно отображается.
+</Callout>
+
+Дерево рендеринга представляет собой один проход рендеринга приложения React. Благодаря [условному рендерингу](/learn/conditional-rendering) родительский компонент может отображать разных дочерних компонентов в зависимости от переданных данных.
+
+Мы можем обновить приложение, чтобы оно условно отображало либо вдохновляющую цитату, либо цвет.
+
+```js tab="Tab 1"
+//App.js
+import FancyText from './FancyText';
+import InspirationGenerator from './InspirationGenerator';
+import Copyright from './Copyright';
+
+export default function App() {
+  return (
+    <>
+      <FancyText title text="Get Inspired App" />
+      <InspirationGenerator>
+        <Copyright year={2004} />
+      </InspirationGenerator>
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//FancyText.js
+export default function FancyText({title, text}) {
+  return title
+    ? <h1 className='fancy title'>{text}</h1>
+    : <h3 className='fancy cursive'>{text}</h3>
+}
+```
+
+```js tab="Tab 3"
+//Color.js
+export default function Color({value}) {
+  return <div className="colorbox" style={{backgroundColor: value}} />
+}
+```
+
+```js tab="Tab 4"
+//InspirationGenerator.js
+import * as React from 'react';
+import inspirations from './inspirations';
+import FancyText from './FancyText';
+import Color from './Color';
+
+export default function InspirationGenerator({children}) {
+  const [index, setIndex] = React.useState(0);
+  const inspiration = inspirations[index];
+  const next = () => setIndex((index + 1) % inspirations.length);
+
+  return (
+    <>
+      <p>Your inspirational {inspiration.type} is:</p>
+      {inspiration.type === 'quote'
+      ? <FancyText text={inspiration.value} />
+      : <Color value={inspiration.value} />}
+
+      <button onClick={next}>Inspire me again</button>
+      {children}
+    </>
+  );
+}
+```
+
+```js tab="Tab 5"
+//Copyright.js
+export default function Copyright({year}) {
+  return <p className='small'>©️ {year}</p>;
+}
+```
+
+```js tab="Tab 6"
+//Inspirations.js
+export default [
+  {type: 'quote', value: "Don’t let yesterday take up too much of today.” — Will Rogers"},
+  {type: 'color', value: "#B73636"},
+  {type: 'quote', value: "Ambition is putting a ladder against the sky."},
+  {type: 'color', value: "#256266"},
+  {type: 'quote', value: "A joy that's shared is a joy made double."},
+  {type: 'color', value: "#F9F2B4"},
+];
+```
+
+<img src="/images/conditional_render_tree.png" alt="1" style={{ height: 'auto' }} />
+
+При условном рендеринге в разных проходах рендеринга дерево рендеринга может отображать разные компоненты.
+
+В этом примере, в зависимости от значения `inspiration.type`, мы можем отображать `<FancyText>` или `<Color>`. Дерево рендеринга может отличаться для каждого прохода рендеринга.
+
+Хотя деревья рендеринга могут различаться при разных проходах рендеринга, эти деревья, как правило, полезны для определения того, что является *компонентами верхнего уровня* и *листовыми компонентами* в приложении React. Компоненты верхнего уровня — это компоненты, ближайшие к корневому компоненту, которые влияют на производительность рендеринга всех компонентов, находящихся ниже них, и часто являются наиболее сложными. Листовые компоненты находятся внизу дерева, не имеют дочерних компонентов и часто перерисовываются.
+
+Идентификация этих категорий компонентов полезна для понимания потока данных и производительности вашего приложения.
+
+## Дерево зависимостей модулей {/*the-module-dependency-tree*/}
+
+Еще одним видом взаимосвязей в приложении React, которые можно моделировать с помощью дерева, являются зависимости модулей приложения. По мере того как мы [разбиваем наши компоненты](/learn/importing-and-exporting-components#exporting-and-importing-a-component) и логику на отдельные файлы, мы создаем [JS-модули](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules), в которых можем экспортировать компоненты, функции или константы.
+
+Каждый узел в дереве зависимостей модулей представляет собой модуль, а каждая ветвь — оператор `import` в этом модуле.
+
+Если взять предыдущее приложение Inspirations, мы можем построить дерево зависимостей модулей, или, короче говоря, дерево зависимостей.
+
+<img src="/images/module_dependency_tree.png" alt="1" style={{ height: 'auto' }} />
+
+Дерево зависимостей модулей для приложения Inspirations.
+
+Корневым узлом дерева является корневой модуль, также известный как файл-точка входа. Часто это модуль, содержащий корневой компонент.
+
+По сравнению с деревом рендеринга того же приложения, здесь присутствуют схожие структуры, но есть и некоторые заметные различия:
+
+* Узлы, составляющие дерево, представляют модули, а не компоненты.
+* Модули, не являющиеся компонентами, такие как `inspirations.js`, также представлены в этом дереве. Дерево рендеринга инкапсулирует только компоненты.
+* `Copyright.js` появляется под `App.js`, но в дереве рендеринга компонент `Copyright` появляется как дочерний элемент `InspirationGenerator`. Это происходит потому, что `InspirationGenerator` принимает JSX в качестве [пропса children](/learn/passing-props-to-a-component#passing-jsx-as-children), поэтому он рендерит `Copyright` как дочерний компонент, но не импортирует модуль.
+
+Деревья зависимостей полезны для определения того, какие модули необходимы для запуска вашего приложения React. При сборке приложения React для производства обычно есть этап сборки, который объединяет весь необходимый JavaScript для отправки клиенту. Инструмент, отвечающий за это, называется [объединителем](https://developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Understanding_client-side_tools/Overview#the_modern_tooling_ecosystem), и он использует дерево зависимостей, чтобы определить, какие модули следует включить.
+
+По мере роста вашего приложения часто растет и размер пакета. Клиенту загрузка и запуск больших пакетов обходятся дорого. Большие размеры пакетов могут задерживать отображение вашего пользовательского интерфейса. Понимание дерева зависимостей вашего приложения может помочь в отладке этих проблем.
+
+## Вывод
+
+* Деревья — это распространенный способ представления отношений между сущностями. Они часто используются для моделирования пользовательского интерфейса.
+* Деревья рендеринга представляют вложенные отношения между компонентами React в рамках одного рендеринга.
+* При условном рендеринге дерево рендеринга может меняться при разных рендерингах. При разных значениях проп компоненты могут рендерить разные дочерние компоненты.
+* Деревья рендеринга помогают определить, какие компоненты являются компонентами верхнего уровня, а какие — листьями. Компоненты верхнего уровня влияют на производительность рендеринга всех компонентов, расположенных ниже них, а компоненты-листья часто перерисовываются. Их идентификация полезна для понимания и отладки производительности рендеринга.
+* Деревья зависимостей представляют зависимости модулей в приложении React.
+* Деревья зависимостей используются инструментами сборки для объединения кода, необходимого для выпуска приложения.
+* Деревья зависимостей полезны для отладки больших пакетов, которые замедляют время рисования, и позволяют выявить возможности для оптимизации того, какой код включается в пакет.
