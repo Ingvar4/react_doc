@@ -1,0 +1,862 @@
+---
+title: Управление состоянием
+description: По мере роста вашего приложения становится все важнее продуманно подходить к организации состояния и потокам данных между компонентами. Избыточное или дублирующееся состояние — частая причина ошибок. В этой главе вы узнаете, как правильно структурировать состояние, как обеспечить удобство обслуживания логики обновления состояния и как совместно использовать состояние между удаленными компонентами.
+---
+
+<Callout>
+
+### Вы узнаете [!toc]
+
+* [Как рассматривать изменения интерфейса как изменения состояния](/learn/reacting-to-input-with-state)
+* [Как правильно структурировать состояние](/learn/choosing-the-state-structure)
+* [Как «поднять состояние» для совместного использования между компонентами](/learn/sharing-state-between-components)
+* [Как контролировать, сохраняется ли состояние или сбрасывается](/learn/preserving-and-resetting-state)
+* [Как объединить сложную логику состояния в одной функции](/learn/extracting-state-logic-into-a-reducer)
+* [Как передавать информацию без «prop drilling»](/learn/passing-data-deeply-with-context)
+* [Как масштабировать управление состоянием по мере роста приложения](/learn/scaling-up-с-помощью-редуктора-и-контекста)
+</Callout>
+
+## Реагирование на ввод с помощью состояния {/*reacting-to-input-with-state*/}
+
+В React вы не будете изменять интерфейс пользователя напрямую из кода. Например, вы не будете писать команды типа «отключить кнопку», «включить кнопку», «показать сообщение об успешном выполнении» и т. д. Вместо этого вы опишете интерфейс, который хотите видеть для различных визуальных состояний вашего компонента («начальное состояние», «состояние ввода», «состояние успеха»), а затем инициируете изменения состояния в ответ на ввод пользователя. Это похоже на то, как дизайнеры подходят к созданию интерфейса.
+
+Вот форма для теста, построенная с использованием React. Обратите внимание, как она использует переменную состояния `status`, чтобы определить, следует ли включить или отключить кнопку отправки, и следует ли вместо этого показать сообщение об успешном завершении.
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  export default function Form() {
+    const [answer, setAnswer] = useState('');
+    const [error, setError] = useState(null);
+    const [status, setStatus] = useState('typing');
+
+    if (status === 'success') {
+      return <h1>Правильно!</h1>
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setStatus('submitting');
+      try {
+        await submitForm(answer);
+        setStatus('success');
+      } catch (err) {
+        setStatus('typing');
+        setError(err);
+      }
+    }
+
+    function handleTextareaChange(e) {
+      setAnswer(e.target.value);
+    }
+    
+    return (
+      <>
+        <h2>Викторина по городам</h2>
+        <p>
+          В каком городе есть рекламный щит, который превращает воздух в питьевую воду?
+        </p>
+        <form onSubmit={handleSubmit}>
+          <textarea
+            value={answer}
+            onChange={handleTextareaChange}
+            disabled={status === 'submitting'}
+          />
+          <br />
+          <button disabled={
+            answer.length === 0 ||
+            status === 'submitting'
+          }>
+            Отправить
+          </button>
+          {error !== null &&
+            <p className="Error">
+              {error.message}
+            </p>
+          }
+        </form>
+      </>
+    );
+  }
+
+  function submitForm(answer) {
+    // Предположим, что происходит обращение к сети.
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+      let shouldError = answer.toLowerCase() !== 'lima'
+        if (shouldError) {
+          reject(new Error('Хорошее предположение, но ответ неверный. Попробуй еще раз!'));
+        } else {
+          resolve();
+        }
+      }, 1500);
+    });
+  }`}
+/>
+
+## Выбор структуры состояния {/*choosing-the-state-structure*/}
+
+Правильная структуризация состояния может стать решающим фактором между компонентом, который приятно модифицировать и отлаживать, и тем, который является постоянным источником ошибок. Самый важный принцип заключается в том, что состояние не должно содержать избыточной или дублирующейся информации. Если есть ненужное состояние, легко забыть его обновить и внести ошибки!
+
+Например, в этой форме есть **избыточная** переменная состояния `fullName`:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  export default function Form() {
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    
+  const [fullName, setFullName] = useState('');
+
+    function handleFirstNameChange(e) {
+      setFirstName(e.target.value);
+      setFullName(e.target.value + ' ' + lastName);
+    }
+
+    function handleLastNameChange(e) {
+      setLastName(e.target.value);
+      setFullName(firstName + ' ' + e.target.value);
+    }
+
+    return (
+      <>
+        <h2>Давайте зарегистрируем вас</h2>
+        <label>
+          Имя:{' '}
+          <input
+            value={firstName}
+            onChange={handleFirstNameChange}
+          />
+        </label>
+        <label>
+          Фамилия:{' '}
+          <input
+            value={lastName}
+            onChange={handleLastNameChange}
+          />
+        </label>
+        <p>
+          Ваш билет будет выдан на имя: <b>{fullName}</b>
+        </p>
+      </>
+    );
+  }`}
+/>
+
+Вы можете удалить его и упростить код, вычисляя `fullName` во время рендеринга компонента:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+export default function Form() {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  
+const fullName = firstName + ' ' + lastName;
+
+  function handleFirstNameChange(e) {
+    setFirstName(e.target.value);
+  }
+
+  function handleLastNameChange(e) {
+    setLastName(e.target.value);
+  }
+  
+  return (
+    <>
+      <h2>Давайте зарегистрируем вас</h2>
+      <label>
+        Имя:{' '}
+        <input
+          value={firstName}
+          onChange={handleFirstNameChange}
+        />
+      </label>
+      <label>
+        Фамилия:{' '}
+        <input
+          value={lastName}
+          onChange={handleLastNameChange}
+        />
+      </label>
+      <p>
+        Ваш билет будет выдан на имя: <b>{fullName}</b>
+      </p>
+    </>
+  );
+}`}
+/>
+
+Это может показаться небольшим изменением, но многие ошибки в приложениях React исправляются именно таким образом.
+
+## Совместное использование состояния между компонентами {/*sharing-state-between-components*/}
+
+Иногда требуется, чтобы состояние двух компонентов всегда изменялось синхронно. Для этого удалите состояние из обоих компонентов, переместите его в ближайший общий родительский компонент, а затем передайте им через props. Это называется «подъемом состояния» (lifting state up) и является одной из самых распространенных операций при написании кода React.
+
+В этом примере одновременно должна быть активна только одна панель. Чтобы этого добиться, вместо того, чтобы хранить состояние активности внутри каждой отдельной панели, родительский компонент хранит состояние и задает props для своих дочерних элементов.
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  export default function Accordion() {
+    const [activeIndex, setActiveIndex] = useState(0);
+    return (
+      <>
+        <h2>Алматы, Казахстан</h2>
+        <Panel
+          title="О нас"
+          isActive={activeIndex === 0}
+          onShow={() => setActiveIndex(0)}
+        >
+          С населением около 2 миллионов человек Алматы является крупнейшим городом Казахстана. С 1929 по 1997 год он был столицей страны.
+        </Panel>
+        <Panel
+          title="Этимология"
+          isActive={activeIndex === 1}
+          onShow={() => setActiveIndex(1)}
+        >
+          Название происходит от <span lang="kk-KZ">алма</span>,что в переводе с казахского означает «яблоко», и часто переводится как «полный яблок». Считается, что регион вокруг Алматы является родиной яблока, а дикий <i lang="la">Malus sieversii</i> считается вероятным предком современного культурного яблока.
+        </Panel>
+      </>
+    );
+  }
+
+  function Panel({
+    title,
+    children,
+    isActive,
+    onShow
+  }) {
+    return (
+      <section className="panel">
+        <h3>{title}</h3>
+        {isActive ? (
+          <p>{children}</p>
+        ) : (
+          <button onClick={onShow}>
+            Показать
+          </button>
+        )}
+      </section>
+    );
+  }`}
+/>
+
+## Сохранение и сброс состояния {/*preserving-and-resetting-state*/}
+
+Когда вы повторно рендерите компонент, React должен решить, какие части дерева сохранить (и обновить), а какие части отбросить или создать заново. В большинстве случаев автоматическое поведение React работает достаточно хорошо. По умолчанию React сохраняет те части дерева, которые «совпадают» с ранее прорисованным деревом компонентов.
+
+Однако иногда это не то, что вам нужно. В этом приложении для чата ввод сообщения и последующее переключение получателя не сбрасывает ввод. Это может привести к тому, что пользователь случайно отправит сообщение не тому человеку:
+
+```js tab="Tab 1"
+//App.js
+import { useState } from 'react';
+import Chat from './Chat.js';
+import ContactList from './ContactList.js';
+
+export default function Messenger() {
+  const [to, setTo] = useState(contacts[0]);
+  return (
+    <div>
+      <ContactList
+        contacts={contacts}
+        selectedContact={to}
+        onSelect={contact => setTo(contact)}
+      />
+      <Chat contact={to} />
+    </div>
+  )
+}
+
+const contacts = [
+  { name: 'Taylor', email: 'taylor@mail.com' },
+  { name: 'Alice', email: 'alice@mail.com' },
+  { name: 'Bob', email: 'bob@mail.com' }
+];
+```
+
+```js tab="Tab 2"
+//ContactList.js
+export default function ContactList({
+  selectedContact,
+  contacts,
+  onSelect
+}) {
+  return (
+    <section className="contact-list">
+      <ul>
+        {contacts.map(contact =>
+          <li key={contact.email}>
+            <button onClick={() => {
+              onSelect(contact);
+                }}>
+              {contact.name}
+            </button>
+          </li>
+        )}
+      </ul>
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//Chat.js
+import { useState } from 'react';
+
+export default function Chat({ contact }) {
+  const [text, setText] = useState
+ 
+('');
+  return (
+    <section className="chat">
+      <textarea
+        value={text}
+        placeholder={'Chat to ' + contact.name}
+        onChange={e => setText(e.target.value)}
+      />
+      <br />
+      <button>Send to {contact.email}</button>
+    </section>
+  );
+}
+```
+
+React позволяет переопределить поведение по умолчанию и *принудительно* сбросить состояние компонента, передавая ему другой `key`, например `<Chat key={email} />`. Это сообщает React, что если получатель другой, то этот компонент `Chat` следует рассматривать как *другой*, который необходимо заново создать с нуля с новыми данными (и интерфейсом, таким как поля ввода) . Теперь переключение между получателями сбрасывает поле ввода — даже если вы рендерите один и тот же компонент.
+
+```js tab="Tab 1"
+//App.js
+import { useState } from 'react';
+import Chat from './Chat.js';
+import ContactList from './ContactList.js';
+
+export default function Messenger() {
+  const [to, setTo] = useState(contacts[0]);
+  return (
+    <div>
+      <ContactList
+        contacts={contacts}
+        selectedContact={to}
+        onSelect={contact => setTo(contact)}
+      />
+      <Chat key={to.email} contact={to} />
+    </div>
+  )
+}
+
+const contacts = [
+  { name: 'Taylor', email: 'taylor@mail.com' },
+  { name: 'Alice', email: 'alice@mail.com' },
+  { name: 'Bob', email: 'bob@mail.com' }
+];
+```
+
+```js tab="Tab 2"
+//ContactList.js
+export default function ContactList({
+  selectedContact,
+  contacts,
+  onSelect
+}) {
+  return (
+    <section className="contact-list">
+      <ul>
+        {contacts.map(contact =>
+          <li key={contact.email}>
+            <button onClick={() => {
+              onSelect(contact);
+            }}>
+              {contact.name}
+            </button>
+          </li>
+        )}
+      </ul>
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//Chat.js
+import { useState } from 'react';
+
+export default function Chat({ contact }) {
+  const [text, setText] = useState('');
+  return (
+    <section className="chat">
+      <textarea
+        value={text}
+        placeholder={'Chat to ' + contact.name}
+        onChange={e => setText(e.target.value)}
+      />
+      <br />
+      <button>Send to {contact.email}</button>
+    </section>
+  );
+}
+```
+
+## Выделение логики состояния в редуктор {/*extracting-state-logic-into-a-reducer*/}
+
+Компоненты со множеством обновлений состояния, распределенных по множеству обработчиков событий, могут стать слишком сложными. В таких случаях вы можете объединить всю логику обновления состояния вне вашего компонента в одной функции, называемой «редуктором». Ваши обработчики событий становятся лаконичными, поскольку в них указываются только «действия» пользователя. Внизу файла функция редуктора определяет, как состояние должно обновляться в ответ на каждое действие!
+
+```js tab="Tab 1"
+//App.js
+import { useReducer } from 'react';
+import AddTask from './AddTask.js';
+import TaskList from './TaskList.js';
+
+export default function TaskApp() {
+  const [tasks, dispatch] = useReducer(
+    tasksReducer,
+    initialTasks
+  );
+
+  function handleAddTask(text) {
+    dispatch({
+      type: 'added',
+      id: nextId++,
+      text: text,
+    });
+  }
+
+  function handleChangeTask (task) {
+    dispatch({
+      type: 'changed',
+      task: task
+    });
+  }
+
+  function handleDeleteTask(taskId) {
+    dispatch({
+      type: 'deleted',
+      id: taskId
+    });
+  }
+
+  return (
+    <>
+      <h1>Маршрут по Праге</h1>
+      <AddTask
+        onAddTask={handleAddTask}
+      />
+      <TaskList
+        tasks={tasks}
+        onChangeTask={handleChangeTask}
+        onDeleteTask={handleDeleteTask}
+      />
+    </>
+  );
+}
+
+function tasksReducer(tasks, action) {
+  switch (action.type) {
+    case 'added': {
+      return [...tasks, {
+        id: action.id,
+        text: action.text,
+        done: false
+      }];
+    }
+    case 'changed': {
+      return tasks.map(t => {
+        if (t.id === action.task.id) {
+          return action.task;
+        } else {
+          return t;
+        }
+      });
+    }
+    case 'deleted': {
+      return tasks.filter(t => t.id !== action.id);
+    }
+    default: {
+      throw Error('Unknown action: ' + action.type);
+    }
+  }
+}
+
+let nextId = 3;
+const initialTasks = [
+  { id: 0, text: 'Посетить музей Кафки', done: true },
+  { id: 1, text: 'Посмотреть кукольный спектакль', done: false },
+  { id: 2, text: 'Сфотографироваться у стены Леннона', done: false }
+];
+```
+```js tab="Tab 2"
+//AddTask.js
+import { useState } from 'react';
+
+export default function AddTask({ onAddTask }) {
+  const [text, setText] = useState('');
+  return (
+    <>
+      <input
+        placeholder="Добавить задачу"
+        value={text}
+        onChange={e => setText(e.target.value)}
+      />
+      <button onClick={() => {
+        setText('');
+        onAddTask(text);
+      }}>Добавить</button>
+    </>
+  )
+}
+```
+```js tab="Tab 3"
+//TaskList.js 
+import { useState } from 'react';
+
+export default function TaskList({
+  tasks,
+  onChangeTask,
+  onDeleteTask
+}) {
+  return (
+    <ul>
+      {tasks.map(task => (
+        <li key={task.id}>
+          <Task
+            task={task}
+            onChange={onChangeTask}
+            onDelete={onDeleteTask}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Task({ task, onChange, onDelete }) {
+  const [isEditing, setIsEditing] = useState(false);
+  let taskContent;
+  if (isEditing) {
+    taskContent = (
+      <>
+        <input
+          value={task.text}
+          onChange={e => {
+            onChange({
+              ...task,
+              text: e.target.value
+            });
+          }} />
+        <button onClick={() => setIsEditing(false)}>
+          Сохранить
+        </button>
+      </>
+    );
+  } else {
+    taskContent = (
+      <>
+        {task.text}
+        <button onClick={() => setIsEditing(true)}>
+          Редактировать
+        </button>
+      </>
+    );
+  }
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={task.done}
+        onChange={e => {
+          onChange({
+            ...task,
+            done: e.target.checked
+          });
+        }}
+      />
+      {taskContent}
+      <button onClick={() => onDelete(task.id)}>
+        Удалить
+      </button>
+    </label>
+  );
+}
+```
+
+## Глубокая передача данных с помощью context {/*passing-data-deeply-with-context*/}
+
+Обычно информация передается из родительского компонента в дочерний через props. Однако передача props может стать неудобной, если вам нужно передать какой-то prop через множество компонентов или если многим компонентам требуется одна и та же информация. Контекст позволяет родительскому компоненту сделать некоторую информацию доступной для любого компонента в дереве ниже него — независимо от глубины — без явной передачи через props.
+
+Здесь компонент `Heading` определяет свой уровень заголовка, «спрашивая» ближайший `Section` о его уровне. Каждый `Section` отслеживает свой собственный уровень, запрашивая родительский `Section` и прибавляя к нему единицу. Каждый `Section` предоставляет информацию всем компонентам ниже него без передачи props — он делает это через контекст.
+
+```js tab="Tab 1"
+//App.js
+import Heading from './Heading.js';
+import Section from './Section.js';
+
+export default function Page() {
+  return (
+    <Section>
+      <Heading>Title</Heading>
+      <Section>
+        <Heading>Heading</Heading>
+        <Heading>Heading</Heading>
+        <Heading>Heading</Heading>
+        <Section>
+          <Heading>Sub-heading</Heading>
+          <Heading>Sub-heading</Heading>
+          <Heading>Sub-heading</Heading>
+          <Section>
+            <Heading>Sub-sub-heading</Heading>
+            <Heading>Sub-sub-heading</Heading>
+            <Heading>Sub-sub-heading</Heading>
+          </Section>
+        </Section>
+      </Section>
+    </Section>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Section.js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Section({ children }) {
+  const level = useContext(LevelContext);
+  return (
+    <section className="section">
+      <LevelContext value={level + 1}>
+        {children}
+      </LevelContext>
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//Heading.js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Heading({ children }) {
+  const level = useContext(LevelContext);
+  switch (level) {
+    case 0:
+      throw Error('Heading must be inside a Section!');
+    case 1:
+      return <h1>{children}</h1>;
+    case 2:
+      return <h2>{children}</h2>;
+    case 3:
+      return <h3>{children}</h3>;
+    case 4:
+      return <h4>{children}</h4>;
+    case 5:
+      return <h5>{children}</h5>;
+    case 6:
+      return <h6>{children}</h6>;
+    default:
+      throw Error('Unknown level: ' + level);
+  }
+}
+```
+
+```js tab="Tab 4"
+//LevelContext.js
+import { createContext } from 'react';
+
+export const LevelContext = createContext(0);
+```
+
+## Масштабирование с помощью редуктора и контекста {/*scaling-up-with-reducer-and-context*/}
+
+Редукторы позволяют консолидировать логику обновления состояния компонента. Контекст позволяет передавать информацию глубоко вниз к другим компонентам. Вы можете комбинировать редукторы и контекст для управления состоянием сложного экрана.
+
+При таком подходе родительский компонент со сложным состоянием управляет им с помощью редуктора. Другие компоненты, расположенные в любой глубине дерева, могут читать его состояние через контекст. Они также могут отправлять действия для обновления этого состояния.
+
+```js tab="Tab 1"
+//App.js
+import AddTask from './AddTask.js';
+import TaskList from './TaskList.js';
+import { TasksProvider } from './TasksContext.js';
+
+export default function TaskApp() {
+  return (
+    <TasksProvider>
+      <h1>Выходной день в Киото</h1>
+      <AddTask />
+      <TaskList />
+    </TasksProvider>
+  );
+}
+```
+```js tab="Tab 2"
+//TasksContext.js
+import { createContext, useContext, useReducer } from 'react';
+
+const TasksContext = createContext(null);
+const TasksDispatchContext = createContext(null);
+
+export function TasksProvider({ children }) {
+  const [tasks, dispatch] = useReducer(
+    tasksReducer,
+    initialTasks
+  );
+
+  return (
+    <TasksContext value={tasks}>
+      <TasksDispatchContext value={dispatch}>
+        {children}
+      </TasksDispatchContext>
+    </TasksContext>
+  );
+}
+
+export function useTasks() {
+  return useContext(TasksContext);
+}
+
+export function useTasksDispatch() {
+  return useContext(TasksDispatchContext);
+}
+
+function tasksReducer(tasks, action) {
+  switch (action.type) {
+    case 'added': {
+      return [...tasks, {
+        id: action.id,
+        text: action.text,
+        done: false
+      }];
+    }
+    case 'changed': {
+      return tasks.map(t => {
+        if (t.id === action.task.id) {
+          return action.task;
+        } else {
+          return t;
+        }
+      });
+    }
+    case 'deleted': {
+      return tasks.filter(t => t.id !== action.id);
+    }
+    default: {
+      throw Error('Неизвестное действие: ' + action.type);
+    }
+  }
+}
+
+const initialTasks = [
+  { id: 0, text: 'Путь философа', done: true },
+  { id: 1, text: 'Посетить храм', done: false },
+  { id: 2, text: 'Выпить матча', done: false }
+];
+```
+```js tab="Tab 3"
+//AddTask.js
+import { useState, useContext } from 'react';
+import { useTasksDispatch } from './TasksContext.js';
+
+export default function AddTask({ onAddTask }) {
+  const [text, setText] = useState('');
+  const dispatch = useTasksDispatch();
+
+  return (
+    <>
+      <input
+        placeholder="Добавить задачу"
+        value={text}
+        onChange={e => setText(e.target.value)}
+      />
+      <button onClick={() => {
+        setText('');
+        dispatch({
+          type: 'added',
+          id: nextId++,
+          text: text,
+        });
+      }}>Добавить</button>
+    </>
+  );
+}
+
+let nextId = 3;
+```
+```js tab="Tab 4"
+//TaskList.js
+import { useState, useContext } from 'react';
+import { useTasks, useTasksDispatch } from './TasksContext.js';
+
+export default function TaskList() {
+  const tasks = useTasks();
+  return (
+    <ul>
+      {tasks.map(task => (
+        <li key={task.id}>
+          <Task task={task} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Task({ task }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const dispatch = useTasksDispatch();
+  let taskContent;
+  if (isEditing) {
+    taskContent = (
+      <>
+        <input
+          value={task.text}
+          onChange={e => {
+            dispatch({
+              type: 'changed',
+              task: {
+                ...task,
+                text: e.target.value
+              }
+            });
+          }} />
+        <button onClick={() => setIsEditing(false)}>
+          Сохранить
+        </button>
+      </>
+    );
+  } else {
+    taskContent = (
+      <>
+        {task.text}
+        <button onClick={() => setIsEditing(true)}>
+          Редактировать
+        </button>
+      </>
+    );
+  }
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={task.done}
+        onChange={e => {
+          dispatch({
+            type: 'changed',
+            task: {
+              ...task,
+              done: e.target.checked
+            }
+          });
+        }}
+      />
+      {taskContent}
+      <button onClick={() => {
+        dispatch({
+          type: 'deleted',
+          id: task.id
+        });
+      }}>
+        Удалить
+      </button>
+    </label>
+  );
+}
+```
