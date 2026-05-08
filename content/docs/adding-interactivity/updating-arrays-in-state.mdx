@@ -1,0 +1,728 @@
+---
+title: Обновление массивов в state
+description: В JavaScript массивы являются изменяемыми, но при хранении их в state следует рассматривать как неизменяемые. Как и в случае с объектами, если вы хотите обновить массив, хранящийся в state, вам нужно создать новый (или сделать копию существующего), а затем настроить state так, чтобы он использовал новый массив.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+
+- Как добавлять, удалять или изменять элементы в массиве в состоянии React
+- Как обновлять объект внутри массива
+- Как сделать копирование массивов менее рутинным с помощью Immer
+</Callout>
+
+## Обновление массивов без мутации
+
+В JavaScript массивы — это просто еще один вид объектов. [Как и с объектами](/learn/updating-objects-in-state), **вы должны рассматривать массивы в состоянии React как доступные только для чтения.** Это означает, что вы пересчитывать элементы внутри массива, например `arr[0] = 'bird'`, а также не следует использовать методы, которые изменяют массив, такие как `push()` и `pop()`.
+
+Вместо этого каждый раз, когда вы хотите обновить массив, вам нужно передавать *новый* массив в функцию установки состояния. Для этого вы можете создать новый массив из исходного массива в вашем состоянии, вызвав его немодифицирующие методы, такие как `filter()` и `map ()`. Затем вы можете установить состояние в виде полученного нового массива.
+
+Вот справочная таблица распространенных операций с массивами. При работе с массивами внутри состояния React вам нужно избегать методов в левом столбце и вместо них использовать методы в правом столбце:
+
+|           | avoid (mutates the array)           | prefer (returns a new array)                                        |
+| --------- | ----------------------------------- | ------------------------------------------------------------------- |
+| adding    | `push`, `unshift`                   | `concat`, `[...arr]` spread syntax ([example](#adding-to-an-array)) |
+| removing  | `pop`, `shift`, `splice`            | `filter`, `slice` ([example](#removing-from-an-array))              |
+| replacing | `splice`, `arr[i] = ...` assignment | `map` ([example](#replacing-items-in-an-array))                     |
+| sorting   | `reverse`, `sort`                   | copy the array first ([example](#making-other-changes-to-an-array)) |
+
+В качестве альтернативы вы можете [использовать Immer](#написание-лаконичной-логики-обновления-с-помощью-immer), что позволит вам использовать методы из обеих колонок.
+
+<Callout type='idea'>
+
+К сожалению, [`slice`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/slice) и [`splice`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/
+ 
+Reference/Global_Objects/Array/splice) имеют похожие названия, но сильно отличаются:
+
+* `slice` позволяет скопировать массив или его часть.
+* `splice` * *изменяет** массив (для вставки или удаления элементов).
+
+В React вы будете гораздо чаще использовать `slice` (без `p`!), так как не стоит изменять объекты или массивы в state. В разделе [Обновление объектов](/learn/updating-objects-in-state) объясняется, что такое мутация и почему ее не рекомендуется применять к state.
+</Callout>
+
+### Добавление в массив {/*adding-to-an-array*/}
+
+`push()` изменит массив, чего вам не нужно:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  let nextId = 0;
+
+  export default function List() {
+    const [name, setName] = useState('');
+    const [artists, setArtists] = useState([]);
+    
+    return (
+      <>
+        <h1>Вдохновляющие скульпторы:</h1>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+        />
+        <button onClick={() => {
+          artists.push({
+            id: nextId++,
+            name: name,
+          });
+        }}>Добавить</button>
+        <ul>
+          {artists.map(artist => (
+            <li key={artist.id}>{artist.name}</li>
+          ))}
+        </ul>
+      </>
+    );
+  }`}
+/>
+
+Вместо этого создайте *новый* массив, который содержит существующие элементы *и* новый элемент в конце. Есть несколько способов сделать это, но самый простой — использовать синтаксис `.. .` [array spread](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax#spread_in_array_literals):
+
+```js
+setArtists( // Замените состояние
+  [ // новым массивом
+    ...artists, // который содержит все старые элементы
+    { id: nextId++, name: name } // и один новый элемент в конце
+  ]
+);
+```
+
+Теперь все работает правильно:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  let nextId = 0;
+
+  export default function List() {
+    const [name, setName] = useState('');
+    const [artists, setArtists] = useState([]);
+
+    return (
+      <>
+        <h1>Вдохновляющие скульпторы:</h1>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+        />
+        <button onClick={() => {
+          setArtists([
+            ...artists,
+            { id: nextId++, name: name }
+          ]);
+        }}>Добавить</button>
+        <ul>
+          {artists.map(artist => (
+            <li key={artist.id}>{artist.name}</li>
+          ))}
+        </ul>
+      </>
+    );
+  }`}
+/>
+
+Синтаксис развертки массива также позволяет добавлять элемент в начало, помещая его *перед* исходным `...artists`:
+
+```js
+setArtists([
+  { id: nextId++, name: name },
+  ...artists / / Поместите старые элементы в конец
+]);
+```
+
+Таким образом, расширение может выполнять функции как `push()`, добавляя элементы в конец массива, так и `unshift()`, добавляя элементы в начало массива. Попробуйте это в песочнице выше!
+
+
+
+### Удаление из массива 
+
+Самый простой способ удалить элемент из массива — *отфильтровать его*. Другими словами, вы создадите новый массив, который не будет содержать этот элемент. Для этого используйте метод `filter`, например:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  let initialArtists = [
+    { id: 0, name: 'Marta Colvin Andrade' },
+    
+  { id: 1, name: 'Lamidi Olonade Fakeye'},
+    { id: 2, name: 'Louise Nevelson'},
+  ];
+
+  export default function List() {
+    const [artists, setArtists] = useState(
+      initialArtists
+    );
+    
+    return (
+      <>
+        <h1>Вдохновляющие скульпторы:</h1>
+        <ul>
+          {artists.map(artist => (
+            <li key={artist.id}>
+          {artist.name}{' '}
+              <button onClick={() => {
+                setArtists(
+                  artists.filter(a =>
+                    a.id !== artist.id
+                  )
+                );
+              }}>
+                Удалить
+              </button>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }`}
+/>
+
+Нажмите кнопку 'Удалить' несколько раз и посмотрите на ее обработчик клика.
+
+```js
+setArtists(
+  artists.filter(a => a.id !== artist.id)
+);
+```
+
+Здесь `artists.filter(a => a.id !== artist.id)` означает 'создать массив, состоящий из тех `artists`, чьи ID отличаются от `artist.id`'. Другими словами, кнопка 'Удалить' каждого артиста отфильтрует _этого_ артиста из массива, а затем запросит повторное рендерирование с полученным массивом. Обратите внимание, что `filter` не изменяет исходный массив.
+
+### Преобразование массива 
+
+Если вы хотите изменить некоторые или все элементы массива, вы можете использовать `map()` для создания **нового** массива. Функция, которую вы передадите в `map`, может определять, что делать с каждым элементом, на основе его данных или индекса (или того и другого) .
+
+В этом примере массив содержит координаты двух кругов и квадрата. При нажатии кнопки только круги смещаются вниз на 50 пикселей. Это достигается созданием нового массива данных с помощью `map()`:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  let initialShapes = [
+    { id: 0, type: 'circle', x: 50, y: 100 },
+    { id: 1, type: 'square', x: 150, y: 100 },
+    { id: 2, type: 'circle', x: 250, y: 100 },
+  ];
+
+  export default function ShapeEditor() {
+    const [shapes, setShapes] = useState(
+      initialShapes
+    );
+
+    function handleClick() {
+      const nextShapes = shapes.map(shape => {
+        if (shape.type === 'square') {
+          // Без изменений
+        return shape;
+        } else {
+          // Вернуть новый круг на 50 пикселей ниже
+          return {
+            ...shape,
+            y: shape.y + 50,
+          };
+        }
+      });
+      // Перерисовать с новым массивом
+      setShapes(nextShapes);
+    }
+
+    return (
+      <>
+        <button onClick={handleClick}>
+          Сдвинь круги вниз!
+        </button>
+        {shapes.map(shape => (
+          <div
+            key={shape.id}
+            style={{
+            background: 'purple',
+            position: 'absolute',
+            left: shape.x,
+            top: shape.y,
+            borderRadius:
+              shape.type === 'circle'
+                ? '50%' : '',
+            width: 20,
+            height: 20,
+          }} />
+        ))}
+      </>
+    );
+  }`}
+/>
+
+### Замена элементов в массиве
+
+Особенно часто возникает необходимость заменить один или несколько элементов в массиве. Присваивания типа `arr[0] = 'bird'` изменяют исходный массив, поэтому вместо этого вам лучше использовать `map`.
+
+Чтобы заменить элемент, создайте новый массив с помощью `map`. Внутри вызова `map` вы получите индекс элемента в качестве второго аргумента. Используйте его, чтобы решить, возвращать ли исходный элемент (первый аргумент) или что-то другое:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  let initialCounters = [
+    0, 0, 0
+  ];
+
+  export default function CounterList() {
+    const [counters, setCounters] = useState(
+      initialCounters
+    );
+
+    function handleIncrementClick(index) {
+      const nextCounters = counters.map((c, i) => {
+        if (i === index) {
+          // Увеличить на единицу счетчик, по которому нажали
+          return c + 1;
+        } else {
+          // Остальные не изменились
+          return c;
+        }
+      });
+      setCounters(nextCounters);
+    }
+
+    return (
+      <ul>
+        {counters.map((counter, i) => (
+          <li key={i}>
+            {counter}
+            <button onClick={() => {
+              handleIncrementClick(i);
+            }}>+1</button>
+          </li>
+        ))}
+      </ul>
+    );
+  }`}
+/>
+
+### Вставка в массив 
+
+Иногда может потребоваться вставить элемент в определенную позицию, которая не находится ни в начале, ни в конце. Для этого можно использовать синтаксис развертки массива `...` вместе с методом `slice()`. Метод `slice ()` позволяет вырезать 'кусок' массива. Чтобы вставить элемент, вы создадите массив, который развернет кусок _до_ точки вставки, затем новый элемент, а затем остальную часть исходного массива.
+
+В этом примере кнопка 'Вставить' всегда вставляет элемент под индексом `1`:
+
+<Sandpack code={
+`import { useState } from 'react' ;
+
+  let nextId = 3;
+  const initialArtists = [
+    { id: 0, name: 'Marta Colvin Andrade' },
+    { id: 1, name: 'Lamidi Olonade Fakeye'},
+    { id: 2, name: 'Louise Nevelson'},
+  ];
+
+  export default function List() {
+    const [name, setName] = useState('');
+    const [artists, setArtists] = useState(
+      initialArtists
+    );
+
+    function handleClick() {
+      const insertAt = 1; // Может быть любой индекс
+      const nextArtists = [
+        // Элементы до точки вставки:
+        ...artists.slice(0, insertAt),
+        // Новый элемент:
+      { id: nextId++, name: name },
+        // Элементы после точки вставки:
+        ...artists.slice(insertAt)
+      ];
+      setArtists(nextArtists);
+      setName('');
+    }
+    
+    return (
+      <>
+        <h1>Вдохновляющие скульпторы:</h1>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+        />
+        <button onClick={handleClick}>
+          Вставить
+        </button>
+        <ul>
+          {artists.map(artist => (
+            <li key={artist.id}>{artist.name}</li>
+          ))}
+        </ul>
+      </>
+    );
+  }`}
+/>
+
+### Внесение других изменений в массив 
+
+Есть некоторые вещи, которые нельзя сделать, используя только синтаксис развертки и неизменяющие методы, такие как `map()` и `filter()`. Например, вам может понадобиться обратить или отсортировать массив. Методы JavaScript `reverse()` и `sort()` изменяют исходный массив, поэтому вы не можете использовать их напрямую.
+
+**Однако вы можете сначала скопировать массив, а затем внести в него изменения.**
+
+Например:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  const initialList = [
+    { id: 0, title: 'Big Bellies' },
+    { id: 1, title: 'Lunar Landscape' },
+    { id: 2, title: 'Terracotta Army' },
+  ];
+
+  export default function List() {
+    const [list, setList] = useState(initialList);
+
+    function handleClick() {
+      const nextList = [...list];
+      nextList.reverse();
+      setList(nextList);
+    }
+    
+  return (
+      <>
+        <button onClick={handleClick}>
+          Обратный порядок
+        </button>
+        <ul>
+          {list.map(artwork => (
+            <li key={artwork.id}>{artwork.title}</li>
+          ))}
+        </ul>
+      </>
+    );
+  }`}
+/>
+
+Здесь вы используете синтаксис распространения `[...list]`, чтобы сначала создать копию исходного массива. Теперь, когда у вас есть копия, вы можете использовать методы, изменяющие данные, такие как `nextList.reverse()` или `nextList.sort()`, или даже присваивать значения отдельным элементам с помощью `nextList[0] = 'something'`.
+
+Однако **даже если вы скопируете массив, вы не сможете напрямую изменять существующие элементы _внутри_ него.**
+ Это связано с тем, что копирование является поверхностным — новый массив будет содержать те же элементы, что и исходный. Поэтому, если вы изменяете объект внутри скопированного массива, вы изменяете существующее состояние. Например, такой код представляет собой проблему.
+
+```js
+const nextList = [...list];
+nextList[0].seen = true; // Проблема: изменяет list[0]
+setList(nextList);
+```
+
+Хотя `nextList` и `list` — это два разных массива, **`nextList[0]` и `list[0]` указывают на один и тот же объект.** Поэтому, изменяя `nextList [0].seen`, вы также изменяете `list[0].seen`. Это изменение состояния, которого следует избегать! Вы можете решить эту проблему аналогично [обновлению вложенных объектов JavaScript](/learn/updating-objects-in-state#updating-a-nested-object) — путем копирования отдельных элементов, которые вы хотите изменить, вместо их изменения. Вот как это сделать.
+
+## Обновление объектов внутри массивов 
+
+Объекты на самом деле не находятся 'внутри' массивов. В коде может казаться, что они находятся 'внутри', но каждый объект в массиве — это отдельное значение, на которое 'указывает' массив. Вот почему нужно быть осторожным при изменении вложенных полей, таких как `list[0]`. Список иллюстраций другого пользователя может указывать на тот же элемент массива!
+
+**При обновлении вложенного состояния необходимо создавать копии, начиная с того места, которое вы хотите обновить, и вплоть до верхнего уровня.** Давайте посмотрим, как это работает.
+
+В этом примере два отдельных списка произведений искусства имеют одинаковое начальное состояние. Они должны быть изолированными, но из-за мутации их состояние случайно оказывается общим, и установка флажка в одном списке влияет на другой список:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  let nextId = 3;
+  const initialList = [
+    { id: 0, title: 'Big Bellies', seen: false },
+    { id: 1, title: 'Lunar Landscape', seen: false },
+    { id: 2, title: 'Terracotta Army', seen: true },
+  ];
+
+  export default function BucketList() {
+    const [myList, setMyList] = useState(initialList);
+    const [yourList, setYourList] = useState(
+      initialList
+    );
+
+    function handleToggleMyList(artworkId, nextSeen) {
+      const myNextList = [...myList];
+      const artwork = myNextList.find(
+        a => a.id === artworkId
+      );
+      artwork.seen = nextSeen;
+      setMyList(myNextList);
+    }
+    
+    function handleToggleYourList(artworkId, nextSeen) {
+      const yourNextList = [...yourList];
+      const artwork = yourNextList.find(
+        a => a.id === artworkId
+      );
+      artwork.seen = nextSeen;
+      setYourList(yourNextList);
+    }
+    
+    return (
+      <>
+        <h1 style={{  fontSize: '15px' }}>Список произведений искусства, которые нужно увидеть</h1>
+        <h2 style={{  fontSize: '13px' }}>Мой список произведений искусства, которые нужно увидеть:</h2>
+        <ItemList
+          artworks={myList}
+          onToggle={handleToggleMyList} />
+        <h2 style={{  fontSize: '13px' }}>Ваш список произведений искусства, которые нужно увидеть:</h2>
+        <ItemList
+          artworks={yourList}
+          onToggle={handleToggleYourList} />
+      </>
+    );
+  }
+
+  function ItemList({ artworks, onToggle }) {
+    return (
+      <ul>
+        {artworks.map(artwork => (
+          <li key={artwork.id}>
+            <label>
+              <input
+                type="checkbox"
+                checked={artwork.seen}
+                onChange={e => {
+                  onToggle(
+                    artwork.id,
+                    e.target.checked
+                  );
+                }}
+              />
+            {artwork.title}
+            </label>
+          </li>
+        ))}
+      </ul>
+    );
+  }`}
+/>
+
+Проблема заключается в следующем коде:
+
+```js
+const myNextList = [...myList];
+const artwork = myNextList.find (a => a.id === artworkId);
+artwork.seen = nextSeen; // Проблема: изменяет существующий элемент
+setMyList(myNextList);
+```
+
+Хотя сам массив `myNextList` является новым, *сами элементы* остаются такими же, как в исходном массиве `myList`. Поэтому изменение `artwork.seen` изменяет *исходный* элемент artwork. Этот элемент artwork также находится в `yourList`, что и вызывает ошибку. О таких ошибках бывает сложно догадаться, но, к счастью, они исчезают, если избегать изменения состояния.
+
+**Вы можете использовать `map`, чтобы заменить старый элемент его обновленной версией без изменения.**
+
+```js
+setMyList(myList.map(artwork => {
+  if (artwork.id === artworkId) {
+    // Создать *новый* объект с изменениями
+    return { ...artwork, seen: nextSeen };
+  } else {
+    // Без изменений
+    return artwork;
+  }
+}));
+```
+
+Здесь `...` — это синтаксис развертки объекта, используемый для [создания копии объекта.](/learn/updating-objects-in-state#copying-objects-with-the-spread-syntax)
+
+При таком подходе ни один из существующих элементов состояния не изменяется, и ошибка устранена:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  let nextId = 3;
+  const initialList = [
+    { id: 0, title: 'Big Bellies', seen: false },
+    { id: 1, title: 'Lunar Landscape', seen: false },
+    { id: 2, title: 'Terracotta Army', seen: true },
+  ];
+
+  export default function BucketList() {
+    
+  const [myList, setMyList] = useState(initialList);
+    const [yourList, setYourList] = useState (
+      initialList
+    );
+
+    function handleToggleMyList(artworkId, nextSeen) {
+      setMyList(myList.map(artwork => {
+        if (artwork.id === artworkId) {
+          // Создать *новый* объект с изменениями
+          return { ...artwork, seen: nextSeen };
+        } else {
+          // Без изменений
+          return artwork;
+        }
+      }));
+    }
+
+    function handleToggleYourList(artworkId, nextSeen) {
+      setYourList(yourList.map(artwork => {
+        if (artwork.id === artworkId) {
+          // Создать *новый* объект с изменениями
+        return { ...artwork, seen: nextSeen };
+        } else {
+          // Нет изменений
+          return artwork;
+        }
+      }));
+    }
+    
+    return (
+      <>
+        <h1 style={{  fontSize: '15px' }}>Список желаний в области искусства</h1>
+        <h2 style={{  fontSize: '13px' }}>Мой список произведений искусства, которые я хочу увидеть:</h2>
+        <ItemList
+          artworks={myList}
+          onToggle= {handleToggleMyList} />
+        <h2 style={{  fontSize: '13px' }}>Ваш список произведений искусства, которые нужно увидеть:</h2>
+        <ItemList
+          artworks={yourList}
+          onToggle={handleToggleYourList} />
+      </>
+    );
+  }
+
+  function ItemList({ artworks, onToggle }) {
+    return (
+      <ul>
+        {artworks.map(artwork => (
+          <li key={artwork.id}>
+            <label>
+            <input
+                type="checkbox"
+                checked={artwork.seen}
+                onChange={e => {
+                  onToggle(
+                    artwork.id,
+                    e.target.checked
+                  );
+                }}
+              />
+              {artwork.title}
+            </label>
+          </li>
+        ))}
+      </ul>
+    );
+  }`}
+/>
+
+В целом, **вы должны изменять только те объекты, которые только что создали.** Если вы вставляете *новое* произведение искусства, вы можете его изменить, но если вы имеете дело с чем-то, что уже находится в состоянии, вам нужно сделать копию.
+
+### Написание лаконичной логики обновления с помощью Immer 
+
+Обновление вложенных массивов без изменения может быть немного однообразным. [Так же, как и с объектами](/learn/updating-objects-in-state# write-concise-update-logic-with-immer):
+
+- Как правило, вам не должно понадобиться обновлять состояние глубже, чем на пару уровней. Если ваши объекты состояния очень глубокие, вам, возможно, стоит [перестроить их по-другому] (/learn/choosing-the-state-structure#avoid-deeply-nested-state), чтобы они были плоскими.
+- Если вы не хотите менять структуру состояния, вам, возможно, лучше использовать [Immer](https://github.com/immerjs/use-immer), который позволяет писать с использованием удобного, но мутирующего синтаксиса и сам заботится о создании копий.
+
+Вот пример Art Bucket List, переписанный с помощью Immer:
+
+```js tab="Tab 1"
+//package.json
+{
+  "dependencies": {
+    "immer": "1.7.3",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-scripts": "latest",
+    "use-immer": "0.5.1"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  },
+  "devDependencies": {}
+}
+```
+
+```js tab="Tab 2"
+//App.js
+import { useState } from 'react';
+import { useImmer } from 'use-immer';
+
+let nextId = 3;
+const initialList = [
+  { id: 0, title: 'Big Bellies', seen: false },
+  { id: 1, title: 'Lunar Landscape', seen: false },
+  { id: 2, title: 'Terracotta Army', seen: true },
+];
+
+export default function BucketList() {
+  const [myList, updateMyList] = useImmer(
+    initialList
+  );
+  const [yourList, updateYourList] = useImmer(
+    initialList
+  );
+
+  function handleToggleMyList(id, nextSeen) {
+    updateMyList(draft => {
+      const artwork = draft.find(a =>
+        a.id === id
+      );
+      artwork.seen = nextSeen;
+    });
+  }
+
+  function handleToggleYourList(artworkId, nextSeen) {
+    updateYourList(draft => {
+      const artwork = draft.find(a =>
+        a.id === artworkId
+      );
+      artwork.seen = nextSeen;
+    });
+  }
+
+  return (
+    <>
+      <h1>Art Bucket List</h1>
+      <h2>My list of art to see:</h2>
+      <ItemList
+        artworks={myList}
+        onToggle={handleToggleMyList} />
+      <h2>Your list of art to see:</h2>
+      <ItemList
+        artworks={yourList}
+        onToggle={handleToggleYourList} />
+    </>
+  );
+}
+
+function ItemList({ artworks, onToggle }) {
+  return (
+    <ul>
+      {artworks.map(artwork => (
+        <li key={artwork.id}>
+          <label>
+            <input
+              type="checkbox"
+              checked={artwork.seen}
+              onChange={e => {
+                onToggle(
+                  artwork.id,
+                  e.target.checked
+                );
+              }}
+            />
+            {artwork.title}
+          </label>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+Обратите внимание, что с Immer **такие изменения, как `artwork.seen = nextSeen`, теперь допустимы:**
+
+```js
+updateMyTodos(draft => {
+  const artwork = draft.find(a => a.id === artworkId) ;
+  artwork.seen = nextSeen;
+});
+```
+
+Это происходит потому, что вы не изменяете _исходное_ состояние, а изменяете специальный объект `draft`, предоставляемый Immer. Аналогично, вы можете применять изменяющие методы, такие как `push()` и `pop()`, к содержимому `draft`.
+
+За кулисами Immer всегда строит следующее состояние с нуля в соответствии с изменениями, которые вы внесли в `draft`. Это позволяет сохранять лаконичность обработчиков событий, не изменяя состояние.
+
+## Вывод
+
+- Вы можете помещать массивы в состояние, но вы не можете их изменять.
+- Вместо изменения массива создайте его *новую* версию и обновите состояние на нее.
+- Вы можете использовать синтаксис развертки массива `[...arr, newItem]` для создания массивов с новыми элементами.
+- Вы можете использовать `filter()` и `map()` для создания новых массивов с отфильтрованными или преобразованными элементами.
+- Вы можете использовать Immer, чтобы ваш код оставался лаконичным.

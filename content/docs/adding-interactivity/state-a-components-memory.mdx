@@ -1,0 +1,816 @@
+---
+title: Состояние. Память компонента
+description: Компонентам часто приходится изменять содержимое экрана в результате взаимодействия с пользователем. Ввод текста в форму должен обновлять поле ввода, нажатие кнопки «Далее» в карусели изображений — менять отображаемое изображение, а нажатие кнопки «Купить» — добавлять товар в корзину. Компонентам необходимо «запоминать» вещи - текущее значение ввода, текущее изображение, корзину. В React такая специфическая для компонента память называется *состоянием*.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+* Как добавить переменную состояния с помощью хука [`useState`](/reference/react/useState)
+* Какую пару значений возвращает хук `useState`
+* Как добавить более одной переменной состояния
+* Почему state называется локальным
+</Callout>
+
+## Когда обычной переменной недостаточно {/*when-a-regular-variable-isnt-enough*/}
+
+Вот компонент, который отображает изображение скульптуры. Нажатие кнопки 'Далее' должно показывать следующую скульптуру, изменяя `index` на `1`, затем на `2` и так далее. Однако это **не сработает**:
+
+```js tab="Tab 1"
+//App.js
+import { sculptureList } from './data.js';
+
+export default function Gallery() {
+  let index = 0;
+
+  function handleClick() {
+    index = index + 1;
+  }
+
+  let sculpture = sculptureList[index];
+  return (
+    <>
+      <button onClick={handleClick}>
+        Next
+      </button>
+      <h2>
+        <i>{sculpture.name} </i>
+        by {sculpture.artist}
+      </h2>
+      <h3>
+        ({index + 1} of {sculptureList.length})
+      </h3>
+      <img
+        src={sculpture.url}
+        alt={sculpture.alt}
+      />
+      <p>
+        {sculpture.description}
+      </p>
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//data.js
+export const sculptureList = [{
+  name: 'Homenaje a la Neurocirugía',
+  artist: 'Marta Colvin Andrade',
+  description: 'Although Colvin is predominantly known for abstract themes that allude to pre-Hispanic symbols, this gigantic sculpture, an homage to neurosurgery, is one of her most recognizable public art pieces.',
+  url: 'https://react.dev/images/docs/scientists/Mx7dA2Y.jpg',
+  alt: 'A bronze statue of two crossed hands delicately holding a human brain in their fingertips.'
+}, {
+  name: 'Floralis Genérica',
+  artist: 'Eduardo Catalano',
+  description: 'This enormous (75 ft. or 23m) silver flower is located in Buenos Aires. It is designed to move, closing its petals in the evening or when strong winds blow and opening them in the morning.',
+  url: 'https://react.dev/images/docs/scientists/ZF6s192m.jpg',
+  alt: 'A gigantic metallic flower sculpture with reflective mirror-like petals and strong stamens.'
+}, {
+  name: 'Eternal Presence',
+  artist: 'John Woodrow Wilson',
+  description: 'Wilson was known for his preoccupation with equality, social justice, as well as the essential and spiritual qualities of humankind. This massive (7ft. or 2,13m) bronze represents what he described as "a symbolic Black presence infused with a sense of universal humanity."',
+  url: 'https://react.dev/images/docs/scientists/aTtVpES.jpg',
+  alt: 'The sculpture depicting a human head seems ever-present and solemn. It radiates calm and serenity.'
+}, {
+  name: 'Moai',
+  artist: 'Unknown Artist',
+  description: 'Located on the Easter Island, there are 1,000 moai, or extant monumental statues, created by the early Rapa Nui people, which some believe represented deified ancestors.',
+  url: 'https://react.dev/images/docs/scientists/RCwLEoQm.jpg',
+  alt: 'Three monumental stone busts with the heads that are disproportionately large with somber faces.'
+}, {
+  name: 'Blue Nana',
+  artist: 'Niki de Saint Phalle',
+  description: 'The Nanas are triumphant creatures, symbols of femininity and maternity. Initially, Saint Phalle used fabric and found objects for the Nanas, and later on introduced polyester to achieve a more vibrant effect.',
+  url: 'https://react.dev/images/docs/scientists/Sd1AgUOm.jpg',
+  alt: 'A large mosaic sculpture of a whimsical dancing female figure in a colorful costume emanating joy.'
+}, {
+  name: 'Ultimate Form',
+  artist: 'Barbara Hepworth',
+  description: 'This abstract bronze sculpture is a part of The Family of Man series located at Yorkshire Sculpture Park. Hepworth chose not to create literal representations of the world but developed abstract forms inspired by people and landscapes.',
+  url: 'https://react.dev/images/docs/scientists/2heNQDcm.jpg',
+  alt: 'A tall sculpture made of three elements stacked on each other reminding of a human figure.'
+}, {
+  name: 'Cavaliere',
+  artist: 'Lamidi Olonade Fakeye',
+  description: "Descended from four generations of woodcarvers, Fakeye's work blended traditional and contemporary Yoruba themes.",
+  url: 'https://react.dev/images/docs/scientists/wIdGuZwm.png',
+  alt: 'An intricate wood sculpture of a warrior with a focused face on a horse adorned with patterns.'
+}, {
+  name: 'Big Bellies',
+  artist: 'Alina Szapocznikow',
+  description: "Szapocznikow is known for her sculptures of the fragmented body as a metaphor for the fragility and impermanence of youth and beauty. This sculpture depicts two very realistic large bellies stacked on top of each other, each around five feet (1,5m) tall.",
+  url: 'https://react.dev/images/docs/scientists/AlHTAdDm.jpg',
+  alt: 'The sculpture reminds a cascade of folds, quite different from bellies in classical sculptures.'
+}, {
+  name: 'Terracotta Army',
+  artist: 'Unknown Artist',
+  description: 'The Terracotta Army is a collection of terracotta sculptures depicting the armies of Qin Shi Huang, the first Emperor of China. The army consisted of more than 8,000 soldiers, 130 chariots with 520 horses, and 150 cavalry horses.',
+  url: 'https://react.dev/images/docs/scientists/HMFmH6m.jpg',
+  alt: '12 terracotta sculptures of solemn warriors, each with a unique facial expression and armor.'
+}, {
+  name: 'Lunar Landscape',
+  artist: 'Louise Nevelson',
+  description: 'Nevelson was known for scavenging objects from New York City debris, which she would later assemble into monumental constructions. In this one, she used disparate parts like a bedpost, juggling pin, and seat fragment, nailing and gluing them into boxes that reflect the influence of Cubism’s geometric abstraction of space and form.',
+  url: 'https://react.dev/images/docs/scientists/rN7hY6om.jpg',
+  alt: 'A black matte sculpture where the individual elements are initially indistinguishable.'
+}, {
+  name: 'Aureole',
+  artist: 'Ranjani Shettar',
+  description: 'Shettar merges the traditional and the modern, the natural and the industrial. Her art focuses on the relationship between man and nature. Her work was described as compelling both abstractly and figuratively, gravity defying, and a "fine synthesis of unlikely materials."',
+  url: 'https://react.dev/images/docs/scientists/okTpbHhm.jpg',
+  alt: 'A pale wire-like sculpture mounted on concrete wall and descending on the floor. It appears light.'
+}, {
+  name: 'Hippos',
+  artist: 'Taipei Zoo',
+  description: 'The Taipei Zoo commissioned a Hippo Square featuring submerged hippos at play.',
+  url: 'https://react.dev/images/docs/scientists/6o5Vuyu.jpg',
+  alt: 'A group of bronze hippo sculptures emerging from the sett sidewalk as if they were swimming.'
+}];
+```
+
+Обработчик события `handleClick` обновляет локальную переменную `index`. Но два фактора мешают этому изменению стать видимым:
+
+1. **Локальные переменные не сохраняются между рендерингами.** Когда React рендерит этот компонент во второй раз, он рендерит его с нуля — он не учитывает никаких изменений в локальных переменных.
+2. **Изменения в локальных переменных не запускают рендеринг.** React не понимает, , что ему нужно снова прорисовать компонент с новыми данными.
+
+Чтобы обновить компонент новыми данными, необходимо выполнить два действия:
+
+1. **Сохранить** данные между прорисовками.
+2. **Запустить** React для прорисовки компонента с новыми данными (повторная прорисовка).
+
+Хук [`useState`](/reference/react/useState) обеспечивает эти два действия:
+
+1. **Переменная состояния** для сохранения данных между рендерингами.
+2. **Функция установки состояния** для обновления переменной и запуска React на повторный рендеринг компонента.
+
+## Добавление переменной состояния {/*adding-a-state-variable*/}
+
+Чтобы добавить переменную состояния, импортируйте `useState` из React в начало файла:
+
+```js
+import { useState } from 'react';
+```
+
+Затем замените эту строку:
+
+```js
+let index = 0;
+```
+
+на
+
+```js
+const [index, setIndex] = useState(0);
+```
+
+`index` — это переменная состояния, а `setIndex` — функция-сеттер.
+
+> Синтаксис `[` и `]` здесь называется [деструктуризацией массива](https://javascript.info/destructuring-assignment) и позволяет извлекать значения из массива. Массив, возвращаемый `useState`, всегда содержит ровно два элемента.
+
+Вот как они работают вместе в `handleClick`:
+
+```js
+function handleClick() {
+  setIndex(index + 1);
+}
+```
+
+Теперь нажатие кнопки 'Далее' меняет текущую скульптуру:
+
+```js tab="Tab 1"
+//App.js
+import { useState } from 'react';
+import { sculptureList } from './data.js';
+
+export default function Gallery() {
+  const [index, setIndex] = useState(0);
+
+  function handleClick() {
+    setIndex(index + 1);
+  }
+
+  let sculpture = sculptureList[index];
+  return (
+    <>
+      <button onClick={handleClick}>
+        Next
+      </button>
+      <h2>
+        <i>{sculpture.name} </i>
+        by {sculpture.artist}
+      </h2>
+      <h3>
+        ({index + 1} of {sculptureList.length})
+      </h3>
+      <img
+        src={sculpture.url}
+        alt={sculpture.alt}
+      />
+      <p>
+        {sculpture.description}
+      </p>
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//data.js
+export const sculptureList = [{
+  name: 'Homenaje a la Neurocirugía',
+  artist: 'Marta Colvin Andrade',
+  description: 'Although Colvin is predominantly known for abstract themes that allude to pre-Hispanic symbols, this gigantic sculpture, an homage to neurosurgery, is one of her most recognizable public art pieces.',
+  url: 'https://react.dev/images/docs/scientists/Mx7dA2Y.jpg',
+  alt: 'A bronze statue of two crossed hands delicately holding a human brain in their fingertips.'
+}, {
+  name: 'Floralis Genérica',
+  artist: 'Eduardo Catalano',
+  description: 'This enormous (75 ft. or 23m) silver flower is located in Buenos Aires. It is designed to move, closing its petals in the evening or when strong winds blow and opening them in the morning.',
+  url: 'https://react.dev/images/docs/scientists/ZF6s192m.jpg',
+  alt: 'A gigantic metallic flower sculpture with reflective mirror-like petals and strong stamens.'
+}, {
+  name: 'Eternal Presence',
+  artist: 'John Woodrow Wilson',
+  description: 'Wilson was known for his preoccupation with equality, social justice, as well as the essential and spiritual qualities of humankind. This massive (7ft. or 2,13m) bronze represents what he described as "a symbolic Black presence infused with a sense of universal humanity."',
+  url: 'https://react.dev/images/docs/scientists/aTtVpES.jpg',
+  alt: 'The sculpture depicting a human head seems ever-present and solemn. It radiates calm and serenity.'
+}, {
+  name: 'Moai',
+  artist: 'Unknown Artist',
+  description: 'Located on the Easter Island, there are 1,000 moai, or extant monumental statues, created by the early Rapa Nui people, which some believe represented deified ancestors.',
+  url: 'https://react.dev/images/docs/scientists/RCwLEoQm.jpg',
+  alt: 'Three monumental stone busts with the heads that are disproportionately large with somber faces.'
+}, {
+  name: 'Blue Nana',
+  artist: 'Niki de Saint Phalle',
+  description: 'The Nanas are triumphant creatures, symbols of femininity and maternity. Initially, Saint Phalle used fabric and found objects for the Nanas, and later on introduced polyester to achieve a more vibrant effect.',
+  url: 'https://react.dev/images/docs/scientists/Sd1AgUOm.jpg',
+  alt: 'A large mosaic sculpture of a whimsical dancing female figure in a colorful costume emanating joy.'
+}, {
+  name: 'Ultimate Form',
+  artist: 'Barbara Hepworth',
+  description: 'This abstract bronze sculpture is a part of The Family of Man series located at Yorkshire Sculpture Park. Hepworth chose not to create literal representations of the world but developed abstract forms inspired by people and landscapes.',
+  url: 'https://react.dev/images/docs/scientists/2heNQDcm.jpg',
+  alt: 'A tall sculpture made of three elements stacked on each other reminding of a human figure.'
+}, {
+  name: 'Cavaliere',
+  artist: 'Lamidi Olonade Fakeye',
+  description: "Descended from four generations of woodcarvers, Fakeye's work blended traditional and contemporary Yoruba themes.",
+  url: 'https://react.dev/images/docs/scientists/wIdGuZwm.png',
+  alt: 'An intricate wood sculpture of a warrior with a focused face on a horse adorned with patterns.'
+}, {
+  name: 'Big Bellies',
+  artist: 'Alina Szapocznikow',
+  description: "Szapocznikow is known for her sculptures of the fragmented body as a metaphor for the fragility and impermanence of youth and beauty. This sculpture depicts two very realistic large bellies stacked on top of each other, each around five feet (1,5m) tall.",
+  url: 'https://react.dev/images/docs/scientists/AlHTAdDm.jpg',
+  alt: 'The sculpture reminds a cascade of folds, quite different from bellies in classical sculptures.'
+}, {
+  name: 'Terracotta Army',
+  artist: 'Unknown Artist',
+  description: 'The Terracotta Army is a collection of terracotta sculptures depicting the armies of Qin Shi Huang, the first Emperor of China. The army consisted of more than 8,000 soldiers, 130 chariots with 520 horses, and 150 cavalry horses.',
+  url: 'https://react.dev/images/docs/scientists/HMFmH6m.jpg',
+  alt: '12 terracotta sculptures of solemn warriors, each with a unique facial expression and armor.'
+}, {
+  name: 'Lunar Landscape',
+  artist: 'Louise Nevelson',
+  description: 'Nevelson was known for scavenging objects from New York City debris, which she would later assemble into monumental constructions. In this one, she used disparate parts like a bedpost, juggling pin, and seat fragment, nailing and gluing them into boxes that reflect the influence of Cubism’s geometric abstraction of space and form.',
+  url: 'https://react.dev/images/docs/scientists/rN7hY6om.jpg',
+  alt: 'A black matte sculpture where the individual elements are initially indistinguishable.'
+}, {
+  name: 'Aureole',
+  artist: 'Ranjani Shettar',
+  description: 'Shettar merges the traditional and the modern, the natural and the industrial. Her art focuses on the relationship between man and nature. Her work was described as compelling both abstractly and figuratively, gravity defying, and a "fine synthesis of unlikely materials."',
+  url: 'https://react.dev/images/docs/scientists/okTpbHhm.jpg',
+  alt: 'A pale wire-like sculpture mounted on concrete wall and descending on the floor. It appears light.'
+}, {
+  name: 'Hippos',
+  artist: 'Taipei Zoo',
+  description: 'The Taipei Zoo commissioned a Hippo Square featuring submerged hippos at play.',
+  url: 'https://react.dev/images/docs/scientists/6o5Vuyu.jpg',
+  alt: 'A group of bronze hippo sculptures emerging from the sett sidewalk as if they were swimming.'
+}];
+```
+
+### Знакомьтесь с вашим первым хуком {/*meet-your-first-hook*/}
+
+В React `useState`, как и любая другая функция, начинающаяся с '`use`', называется хуком.
+
+*Хуки* — это специальные функции, доступные только во время [рендеринга](/learn/render -and-commit#step-1-trigger-a-render) (о чем мы поговорим более подробно на следующей странице). Они позволяют вам 'подключаться' к различным функциям React.
+
+Состояние — это лишь одна из таких функций, но позже вы познакомитесь и с другими Hooks.
+
+<Callout type='idea'>
+**Хуки — функции, начинающиеся с `use` — можно вызывать только на верхнем уровне ваших компонентов или [ваших собственных хуков.](/learn/reusing-logic-with-custom-hooks)** Вы не можете вызывать хуки внутри условий, циклов или других вложенных функций. Хуки — это функции, но полезно думать о них как о безусловных декларациях потребностей вашего компонента. Вы 'используете' функции React в верхней части вашего компонента, аналогично тому, как вы 'импортируете' модули в верхней части вашего файла.
+</Callout>
+
+### Анатомия `useState` {/*anatomy-of-usestate*/}
+
+Когда вы вызываете [`useState`](/reference/react/useState), вы сообщаете React, что хотите, чтобы этот компонент что-то запомнил:
+
+```js
+const [index, setIndex] = useState(0);
+```
+
+В данном случае вы хотите, чтобы React запомнил `index`.
+
+<Callout>
+Принято называть эту пару как `const [something, setSomething]`. Вы можете назвать её как угодно, но следование соглашениям облегчает понимание кода в разных проектах.
+</Callout>
+
+Единственным аргументом для `useState` является **начальное значение** вашей переменной состояния. В этом примере начальное значение `index` устанавливается равным `0` с помощью `useState(0)`.
+
+Каждый раз, когда ваш компонент прорисовывается, `useState` возвращает массив, содержащий два значения:
+
+1. **Переменную состояния** (`index`) с сохраненным вами значением.
+2. **Функция установки состояния** (`setIndex`), которая может обновлять переменную состояния и запускать повторный рендеринг компонента в React.
+
+Вот как это работает на практике:
+
+```js
+const [index, setIndex] = useState(0);
+```
+
+1. **Ваш компонент прорисовывается в первый раз.** Поскольку вы передали `0` в `useState` в качестве начального значения для `index`, он вернет `[0, setIndex]`. React запоминает, что `0` — это последнее значение состояния.
+2. **Вы обновляете состояние.** Когда пользователь нажимает кнопку, вызывается `setIndex(index + 1)`. `index` равен `0`, поэтому это `setIndex(1)`. Это сообщает React, что теперь `index` равен `1`, и запускает очередной рендеринг.
+3. **Второй рендеринг вашего компонента.** React по-прежнему видит `useState(0)`, но поскольку React *запомнил*, что вы установили `index` равным `1`, он возвращает вместо этого `[1, setIndex]`.
+4. И так далее!
+
+## Предоставление компоненту нескольких переменных состояния {/*giving-a-component-multiple-state-variables*/}
+
+В одном компоненте может быть столько переменных состояния любого типа, сколько вам угодно. У этого компонента есть две переменные состояния: число `index` и булево значение `showMore`, которое переключается при нажатии кнопки 'Показать детали' :
+
+```js tab="Tab 1"
+//App.js
+import { useState } from 'react';
+import { sculptureList } from './data.js';
+
+export default function Gallery() {
+  const [index, setIndex] = useState(0);
+  const [showMore, setShowMore] = useState(false);
+
+  function handleNextClick() {
+    setIndex(index + 1);
+  }
+
+  function handleMoreClick() {
+    setShowMore(!showMore);
+  }
+
+  let sculpture = sculptureList[index];
+  return (
+    <>
+      <button onClick={handleNextClick}>
+        Next
+      </button>
+      <h2>
+        <i>{sculpture.name} </i>
+        by {sculpture.artist}
+      </h2>
+      <h3>
+        ({index + 1} of {sculptureList.length})
+      </h3>
+      <button onClick={handleMoreClick}>
+        {showMore ? 'Hide' : 'Show'} details
+      </button>
+      {showMore && <p>{sculpture.description}</p>}
+      <img
+        src={sculpture.url}
+        alt={sculpture.alt}
+      />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//data.js
+export const sculptureList = [{
+  name: 'Homenaje a la Neurocirugía',
+  artist: 'Marta Colvin Andrade',
+  description: 'Although Colvin is predominantly known for abstract themes that allude to pre-Hispanic symbols, this gigantic sculpture, an homage to neurosurgery, is one of her most recognizable public art pieces.',
+  url: 'https://react.dev/images/docs/scientists/Mx7dA2Y.jpg',
+  alt: 'A bronze statue of two crossed hands delicately holding a human brain in their fingertips.'
+}, {
+  name: 'Floralis Genérica',
+  artist: 'Eduardo Catalano',
+  description: 'This enormous (75 ft. or 23m) silver flower is located in Buenos Aires. It is designed to move, closing its petals in the evening or when strong winds blow and opening them in the morning.',
+  url: 'https://react.dev/images/docs/scientists/ZF6s192m.jpg',
+  alt: 'A gigantic metallic flower sculpture with reflective mirror-like petals and strong stamens.'
+}, {
+  name: 'Eternal Presence',
+  artist: 'John Woodrow Wilson',
+  description: 'Wilson was known for his preoccupation with equality, social justice, as well as the essential and spiritual qualities of humankind. This massive (7ft. or 2,13m) bronze represents what he described as "a symbolic Black presence infused with a sense of universal humanity."',
+  url: 'https://react.dev/images/docs/scientists/aTtVpES.jpg',
+  alt: 'The sculpture depicting a human head seems ever-present and solemn. It radiates calm and serenity.'
+}, {
+  name: 'Moai',
+  artist: 'Unknown Artist',
+  description: 'Located on the Easter Island, there are 1,000 moai, or extant monumental statues, created by the early Rapa Nui people, which some believe represented deified ancestors.',
+  url: 'https://react.dev/images/docs/scientists/RCwLEoQm.jpg',
+  alt: 'Three monumental stone busts with the heads that are disproportionately large with somber faces.'
+}, {
+  name: 'Blue Nana',
+  artist: 'Niki de Saint Phalle',
+  description: 'The Nanas are triumphant creatures, symbols of femininity and maternity. Initially, Saint Phalle used fabric and found objects for the Nanas, and later on introduced polyester to achieve a more vibrant effect.',
+  url: 'https://react.dev/images/docs/scientists/Sd1AgUOm.jpg',
+  alt: 'A large mosaic sculpture of a whimsical dancing female figure in a colorful costume emanating joy.'
+}, {
+  name: 'Ultimate Form',
+  artist: 'Barbara Hepworth',
+  description: 'This abstract bronze sculpture is a part of The Family of Man series located at Yorkshire Sculpture Park. Hepworth chose not to create literal representations of the world but developed abstract forms inspired by people and landscapes.',
+  url: 'https://react.dev/images/docs/scientists/2heNQDcm.jpg',
+  alt: 'A tall sculpture made of three elements stacked on each other reminding of a human figure.'
+}, {
+  name: 'Cavaliere',
+  artist: 'Lamidi Olonade Fakeye',
+  description: "Descended from four generations of woodcarvers, Fakeye's work blended traditional and contemporary Yoruba themes.",
+  url: 'https://react.dev/images/docs/scientists/wIdGuZwm.png',
+  alt: 'An intricate wood sculpture of a warrior with a focused face on a horse adorned with patterns.'
+}, {
+  name: 'Big Bellies',
+  artist: 'Alina Szapocznikow',
+  description: "Szapocznikow is known for her sculptures of the fragmented body as a metaphor for the fragility and impermanence of youth and beauty. This sculpture depicts two very realistic large bellies stacked on top of each other, each around five feet (1,5m) tall.",
+  url: 'https://react.dev/images/docs/scientists/AlHTAdDm.jpg',
+  alt: 'The sculpture reminds a cascade of folds, quite different from bellies in classical sculptures.'
+}, {
+  name: 'Terracotta Army',
+  artist: 'Unknown Artist',
+  description: 'The Terracotta Army is a collection of terracotta sculptures depicting the armies of Qin Shi Huang, the first Emperor of China. The army consisted of more than 8,000 soldiers, 130 chariots with 520 horses, and 150 cavalry horses.',
+  url: 'https://react.dev/images/docs/scientists/HMFmH6m.jpg',
+  alt: '12 terracotta sculptures of solemn warriors, each with a unique facial expression and armor.'
+}, {
+  name: 'Lunar Landscape',
+  artist: 'Louise Nevelson',
+  description: 'Nevelson was known for scavenging objects from New York City debris, which she would later assemble into monumental constructions. In this one, she used disparate parts like a bedpost, juggling pin, and seat fragment, nailing and gluing them into boxes that reflect the influence of Cubism’s geometric abstraction of space and form.',
+  url: 'https://react.dev/images/docs/scientists/rN7hY6om.jpg',
+  alt: 'A black matte sculpture where the individual elements are initially indistinguishable.'
+}, {
+  name: 'Aureole',
+  artist: 'Ranjani Shettar',
+  description: 'Shettar merges the traditional and the modern, the natural and the industrial. Her art focuses on the relationship between man and nature. Her work was described as compelling both abstractly and figuratively, gravity defying, and a "fine synthesis of unlikely materials."',
+  url: 'https://react.dev/images/docs/scientists/okTpbHhm.jpg',
+  alt: 'A pale wire-like sculpture mounted on concrete wall and descending on the floor. It appears light.'
+}, {
+  name: 'Hippos',
+  artist: 'Taipei Zoo',
+  description: 'The Taipei Zoo commissioned a Hippo Square featuring submerged hippos at play.',
+  url: 'https://react.dev/images/docs/scientists/6o5Vuyu.jpg',
+  alt: 'A group of bronze hippo sculptures emerging from the sett sidewalk as if they were swimming.'
+}];
+```
+
+Иметь несколько переменных состояния — хорошая идея, если их состояния не связаны между собой, как `index` и `showMore` в этом примере. Но если вы заметили, что часто изменяете две переменные состояния одновременно, то проще будет объединить их в одну. Например, если у вас есть форма со множеством полей, удобнее иметь одну переменную состояния, содержащую объект, чем по одной переменной состояния на каждое поле. Прочитайте [Выбор структуры состояния](/learn/choosing-the-state-structure) для получения дополнительных советов.
+
+<Callout type='idea'>
+#### Как React узнает, какое состояние возвращать? {/*how-does -react-know-which-state-to-return*/}
+
+Вы, возможно, заметили, что вызов `useState` не получает никакой информации о том, *к какой* переменной состояния он относится. В `useState` не передается никакого 'идентификатора', так как же он узнает, какую из переменных состояния возвращать? Опирается ли он на какую-то магию, например, на разбор ваших функций? Ответ — нет.
+
+Вместо этого, чтобы обеспечить лаконичный синтаксис, хуки **полагаются на стабильный порядок вызова при каждом рендере одного и того же компонента.** На практике это хорошо работает, потому что если вы следуете приведенному выше правилу ('вызывайте хуки только на верхнем уровне'), хуки всегда будут вызываться в одном и том же порядке. Кроме того, [плагин линтера](https://www.npmjs.com/package/eslint-plugin-react -hooks) улавливает большинство ошибок.
+
+Внутренне React хранит массив пар состояний для каждого компонента. Он также поддерживает индекс текущей пары, который перед рендерингом устанавливается в `0`. Каждый раз, когда вы вызываете `useState`, React предоставляет вам следующую пару состояний и увеличивает индекс. Вы можете узнать больше об этом механизме в [React Hooks: Not Magic, просто массивы.](https://medium.com/@ryardley/react-hooks-not-magic-just-arrays-cd4f1857236e)
+
+В этом примере **не используется React**, но он дает представление о том, как `useState` работает внутренне:
+
+```js tab="Tab 1"
+//index.js
+let componentHooks = [];
+let currentHookIndex = 0;
+
+// How useState works inside React (simplified).
+function useState(initialState) {
+  let pair = componentHooks[currentHookIndex];
+  if (pair) {
+    // This is not the first render,
+    // so the state pair already exists.
+    // Return it and prepare for next Hook call.
+    currentHookIndex++;
+    return pair;
+  }
+
+  // This is the first time we're rendering,
+  // so create a state pair and store it.
+  pair = [initialState, setState];
+
+  function setState(nextState) {
+    // When the user requests a state change,
+    // put the new value into the pair.
+    pair[0] = nextState;
+    updateDOM();
+  }
+
+  // Store the pair for future renders
+  // and prepare for the next Hook call.
+  componentHooks[currentHookIndex] = pair;
+  currentHookIndex++;
+  return pair;
+}
+
+function Gallery() {
+  // Each useState() call will get the next pair.
+  const [index, setIndex] = useState(0);
+  const [showMore, setShowMore] = useState(false);
+
+  function handleNextClick() {
+    setIndex(index + 1);
+  }
+
+  function handleMoreClick() {
+    setShowMore(!showMore);
+  }
+
+  let sculpture = sculptureList[index];
+  // This example doesn't use React, so
+  // return an output object instead of JSX.
+  return {
+    onNextClick: handleNextClick,
+    onMoreClick: handleMoreClick,
+    header: `${sculpture.name} by ${sculpture.artist}`,
+    counter: `${index + 1} of ${sculptureList.length}`,
+    more: `${showMore ? 'Hide' : 'Show'} details`,
+    description: showMore ? sculpture.description : null,
+    imageSrc: sculpture.url,
+    imageAlt: sculpture.alt
+  };
+}
+
+function updateDOM() {
+  // Reset the current Hook index
+  // before rendering the component.
+  currentHookIndex = 0;
+  let output = Gallery();
+
+  // Update the DOM to match the output.
+  // This is the part React does for you.
+  nextButton.onclick = output.onNextClick;
+  header.textContent = output.header;
+  moreButton.onclick = output.onMoreClick;
+  moreButton.textContent = output.more;
+  image.src = output.imageSrc;
+  image.alt = output.imageAlt;
+  if (output.description !== null) {
+    description.textContent = output.description;
+    description.style.display = '';
+  } else {
+    description.style.display = 'none';
+  }
+}
+
+let nextButton = document.getElementById('nextButton');
+let header = document.getElementById('header');
+let moreButton = document.getElementById('moreButton');
+let description = document.getElementById('description');
+let image = document.getElementById('image');
+let sculptureList = [{
+  name: 'Homenaje a la Neurocirugía',
+  artist: 'Marta Colvin Andrade',
+  description: 'Although Colvin is predominantly known for abstract themes that allude to pre-Hispanic symbols, this gigantic sculpture, an homage to neurosurgery, is one of her most recognizable public art pieces.',
+  url: 'https://react.dev/images/docs/scientists/Mx7dA2Y.jpg',
+  alt: 'A bronze statue of two crossed hands delicately holding a human brain in their fingertips.'
+}, {
+  name: 'Floralis Genérica',
+  artist: 'Eduardo Catalano',
+  description: 'This enormous (75 ft. or 23m) silver flower is located in Buenos Aires. It is designed to move, closing its petals in the evening or when strong winds blow and opening them in the morning.',
+  url: 'https://react.dev/images/docs/scientists/ZF6s192m.jpg',
+  alt: 'A gigantic metallic flower sculpture with reflective mirror-like petals and strong stamens.'
+}, {
+  name: 'Eternal Presence',
+  artist: 'John Woodrow Wilson',
+  description: 'Wilson was known for his preoccupation with equality, social justice, as well as the essential and spiritual qualities of humankind. This massive (7ft. or 2,13m) bronze represents what he described as "a symbolic Black presence infused with a sense of universal humanity."',
+  url: 'https://react.dev/images/docs/scientists/aTtVpES.jpg',
+  alt: 'The sculpture depicting a human head seems ever-present and solemn. It radiates calm and serenity.'
+}, {
+  name: 'Moai',
+  artist: 'Unknown Artist',
+  description: 'Located on the Easter Island, there are 1,000 moai, or extant monumental statues, created by the early Rapa Nui people, which some believe represented deified ancestors.',
+  url: 'https://react.dev/images/docs/scientists/RCwLEoQm.jpg',
+  alt: 'Three monumental stone busts with the heads that are disproportionately large with somber faces.'
+}, {
+  name: 'Blue Nana',
+  artist: 'Niki de Saint Phalle',
+  description: 'The Nanas are triumphant creatures, symbols of femininity and maternity. Initially, Saint Phalle used fabric and found objects for the Nanas, and later on introduced polyester to achieve a more vibrant effect.',
+  url: 'https://react.dev/images/docs/scientists/Sd1AgUOm.jpg',
+  alt: 'A large mosaic sculpture of a whimsical dancing female figure in a colorful costume emanating joy.'
+}, {
+  name: 'Ultimate Form',
+  artist: 'Barbara Hepworth',
+  description: 'This abstract bronze sculpture is a part of The Family of Man series located at Yorkshire Sculpture Park. Hepworth chose not to create literal representations of the world but developed abstract forms inspired by people and landscapes.',
+  url: 'https://react.dev/images/docs/scientists/2heNQDcm.jpg',
+  alt: 'A tall sculpture made of three elements stacked on each other reminding of a human figure.'
+}, {
+  name: 'Cavaliere',
+  artist: 'Lamidi Olonade Fakeye',
+  description: "Descended from four generations of woodcarvers, Fakeye's work blended traditional and contemporary Yoruba themes.",
+  url: 'https://react.dev/images/docs/scientists/wIdGuZwm.png',
+  alt: 'An intricate wood sculpture of a warrior with a focused face on a horse adorned with patterns.'
+}, {
+  name: 'Big Bellies',
+  artist: 'Alina Szapocznikow',
+  description: "Szapocznikow is known for her sculptures of the fragmented body as a metaphor for the fragility and impermanence of youth and beauty. This sculpture depicts two very realistic large bellies stacked on top of each other, each around five feet (1,5m) tall.",
+  url: 'https://react.dev/images/docs/scientists/AlHTAdDm.jpg',
+  alt: 'The sculpture reminds a cascade of folds, quite different from bellies in classical sculptures.'
+}, {
+  name: 'Terracotta Army',
+  artist: 'Unknown Artist',
+  description: 'The Terracotta Army is a collection of terracotta sculptures depicting the armies of Qin Shi Huang, the first Emperor of China. The army consisted of more than 8,000 soldiers, 130 chariots with 520 horses, and 150 cavalry horses.',
+  url: 'https://react.dev/images/docs/scientists/HMFmH6m.jpg',
+  alt: '12 terracotta sculptures of solemn warriors, each with a unique facial expression and armor.'
+}, {
+  name: 'Lunar Landscape',
+  artist: 'Louise Nevelson',
+  description: 'Nevelson was known for scavenging objects from New York City debris, which she would later assemble into monumental constructions. In this one, she used disparate parts like a bedpost, juggling pin, and seat fragment, nailing and gluing them into boxes that reflect the influence of Cubism’s geometric abstraction of space and form.',
+  url: 'https://react.dev/images/docs/scientists/rN7hY6om.jpg',
+  alt: 'A black matte sculpture where the individual elements are initially indistinguishable.'
+}, {
+  name: 'Aureole',
+  artist: 'Ranjani Shettar',
+  description: 'Shettar merges the traditional and the modern, the natural and the industrial. Her art focuses on the relationship between man and nature. Her work was described as compelling both abstractly and figuratively, gravity defying, and a "fine synthesis of unlikely materials."',
+  url: 'https://react.dev/images/docs/scientists/okTpbHhm.jpg',
+  alt: 'A pale wire-like sculpture mounted on concrete wall and descending on the floor. It appears light.'
+}, {
+  name: 'Hippos',
+  artist: 'Taipei Zoo',
+  description: 'The Taipei Zoo commissioned a Hippo Square featuring submerged hippos at play.',
+  url: 'https://react.dev/images/docs/scientists/6o5Vuyu.jpg',
+  alt: 'A group of bronze hippo sculptures emerging from the sett sidewalk as if they were swimming.'
+}];
+
+// Make UI match the initial state.
+updateDOM();
+```
+
+```js tab="Tab 2"
+//index.html
+<button id="nextButton">
+  Next
+</button>
+<h3 id="header"></h3>
+<button id="moreButton"></button>
+<p id="description"></p>
+<img id="image">
+
+<style>
+* { box-sizing: border-box; }
+body { font-family: sans-serif; margin: 20px; padding: 0; }
+button { display: block; margin-bottom: 10px; }
+</style>
+```
+
+Вам не обязательно это понимать, чтобы использовать React, но эта ментальная модель может оказаться полезной.
+</Callout>
+
+## Состояние изолировано и является частным {/*state-is-isolated-and-private*/}
+
+Состояние локально для экземпляра компонента на экране. Другими словами, **если вы дважды отобразите один и тот же компонент, каждая копия будет иметь полностью изолированное состояние!** Изменение одного из них не повлияет на другой.
+
+В этом примере компонент `Gallery` из предыдущего примера отображается дважды без изменений в его логике. Попробуйте нажать кнопки внутри каждой из галерей. Обратите внимание, что их состояние независимо:
+
+```js tab="Tab 1"
+//App.js
+import Gallery from './Gallery.js';
+
+export default function Page() {
+  return (
+    <div className="Page">
+      <Gallery />
+      <Gallery />
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Gallery.js
+import { useState } from 'react';
+import { sculptureList } from './data.js';
+
+export default function Gallery() {
+  const [index, setIndex] = useState(0);
+  const [showMore, setShowMore] = useState(false);
+
+  function handleNextClick() {
+    setIndex(index + 1);
+  }
+
+  function handleMoreClick() {
+    setShowMore(!showMore);
+  }
+
+  let sculpture = sculptureList[index];
+  return (
+    <section>
+      <button onClick={handleNextClick}>
+        Next
+      </button>
+      <h2>
+        <i>{sculpture.name} </i>
+        by {sculpture.artist}
+      </h2>
+      <h3>
+        ({index + 1} of {sculptureList.length})
+      </h3>
+      <button onClick={handleMoreClick}>
+        {showMore ? 'Hide' : 'Show'} details
+      </button>
+      {showMore && <p>{sculpture.description}</p>}
+      <img
+        src={sculpture.url}
+        alt={sculpture.alt}
+      />
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//data.js
+export const sculptureList = [{
+  name: 'Homenaje a la Neurocirugía',
+  artist: 'Marta Colvin Andrade',
+  description: 'Although Colvin is predominantly known for abstract themes that allude to pre-Hispanic symbols, this gigantic sculpture, an homage to neurosurgery, is one of her most recognizable public art pieces.',
+  url: 'https://react.dev/images/docs/scientists/Mx7dA2Y.jpg',
+  alt: 'A bronze statue of two crossed hands delicately holding a human brain in their fingertips.'
+}, {
+  name: 'Floralis Genérica',
+  artist: 'Eduardo Catalano',
+  description: 'This enormous (75 ft. or 23m) silver flower is located in Buenos Aires. It is designed to move, closing its petals in the evening or when strong winds blow and opening them in the morning.',
+  url: 'https://react.dev/images/docs/scientists/ZF6s192m.jpg',
+  alt: 'A gigantic metallic flower sculpture with reflective mirror-like petals and strong stamens.'
+}, {
+  name: 'Eternal Presence',
+  artist: 'John Woodrow Wilson',
+  description: 'Wilson was known for his preoccupation with equality, social justice, as well as the essential and spiritual qualities of humankind. This massive (7ft. or 2,13m) bronze represents what he described as "a symbolic Black presence infused with a sense of universal humanity."',
+  url: 'https://react.dev/images/docs/scientists/aTtVpES.jpg',
+  alt: 'The sculpture depicting a human head seems ever-present and solemn. It radiates calm and serenity.'
+}, {
+  name: 'Moai',
+  artist: 'Unknown Artist',
+  description: 'Located on the Easter Island, there are 1,000 moai, or extant monumental statues, created by the early Rapa Nui people, which some believe represented deified ancestors.',
+  url: 'https://react.dev/images/docs/scientists/RCwLEoQm.jpg',
+  alt: 'Three monumental stone busts with the heads that are disproportionately large with somber faces.'
+}, {
+  name: 'Blue Nana',
+  artist: 'Niki de Saint Phalle',
+  description: 'The Nanas are triumphant creatures, symbols of femininity and maternity. Initially, Saint Phalle used fabric and found objects for the Nanas, and later on introduced polyester to achieve a more vibrant effect.',
+  url: 'https://react.dev/images/docs/scientists/Sd1AgUOm.jpg',
+  alt: 'A large mosaic sculpture of a whimsical dancing female figure in a colorful costume emanating joy.'
+}, {
+  name: 'Ultimate Form',
+  artist: 'Barbara Hepworth',
+  description: 'This abstract bronze sculpture is a part of The Family of Man series located at Yorkshire Sculpture Park. Hepworth chose not to create literal representations of the world but developed abstract forms inspired by people and landscapes.',
+  url: 'https://react.dev/images/docs/scientists/2heNQDcm.jpg',
+  alt: 'A tall sculpture made of three elements stacked on each other reminding of a human figure.'
+}, {
+  name: 'Cavaliere',
+  artist: 'Lamidi Olonade Fakeye',
+  description: "Descended from four generations of woodcarvers, Fakeye's work blended traditional and contemporary Yoruba themes.",
+  url: 'https://react.dev/images/docs/scientists/wIdGuZwm.png',
+  alt: 'An intricate wood sculpture of a warrior with a focused face on a horse adorned with patterns.'
+}, {
+  name: 'Big Bellies',
+  artist: 'Alina Szapocznikow',
+  description: "Szapocznikow is known for her sculptures of the fragmented body as a metaphor for the fragility and impermanence of youth and beauty. This sculpture depicts two very realistic large bellies stacked on top of each other, each around five feet (1,5m) tall.",
+  url: 'https://react.dev/images/docs/scientists/AlHTAdDm.jpg',
+  alt: 'The sculpture reminds a cascade of folds, quite different from bellies in classical sculptures.'
+}, {
+  name: 'Terracotta Army',
+  artist: 'Unknown Artist',
+  description: 'The Terracotta Army is a collection of terracotta sculptures depicting the armies of Qin Shi Huang, the first Emperor of China. The army consisted of more than 8,000 soldiers, 130 chariots with 520 horses, and 150 cavalry horses.',
+  url: 'https://react.dev/images/docs/scientists/HMFmH6m.jpg',
+  alt: '12 terracotta sculptures of solemn warriors, each with a unique facial expression and armor.'
+}, {
+  name: 'Lunar Landscape',
+  artist: 'Louise Nevelson',
+  description: 'Nevelson was known for scavenging objects from New York City debris, which she would later assemble into monumental constructions. In this one, she used disparate parts like a bedpost, juggling pin, and seat fragment, nailing and gluing them into boxes that reflect the influence of Cubism’s geometric abstraction of space and form.',
+  url: 'https://react.dev/images/docs/scientists/rN7hY6om.jpg',
+  alt: 'A black matte sculpture where the individual elements are initially indistinguishable.'
+}, {
+  name: 'Aureole',
+  artist: 'Ranjani Shettar',
+  description: 'Shettar merges the traditional and the modern, the natural and the industrial. Her art focuses on the relationship between man and nature. Her work was described as compelling both abstractly and figuratively, gravity defying, and a "fine synthesis of unlikely materials."',
+  url: 'https://react.dev/images/docs/scientists/okTpbHhm.jpg',
+  alt: 'A pale wire-like sculpture mounted on concrete wall and descending on the floor. It appears light.'
+}, {
+  name: 'Hippos',
+  artist: 'Taipei Zoo',
+  description: 'The Taipei Zoo commissioned a Hippo Square featuring submerged hippos at play.',
+  url: 'https://react.dev/images/docs/scientists/6o5Vuyu.jpg',
+  alt: 'A group of bronze hippo sculptures emerging from the sett sidewalk as if they were swimming.'
+}];
+```
+
+Именно это отличает состояние от обычных переменных, которые вы можете объявить в начале своего модуля. Состояние не привязано к конкретному вызову функции или месту в коде, но оно 'локально' для конкретного места на экране. Вы отобразили два компонента `<Gallery />`, поэтому их состояние хранится отдельно.
+
+Также обратите внимание на то, что компонент `Page` 'не знает' ничего о состоянии `Gallery` и даже о том, есть ли оно у него. В отличие от пропсов, **состояние является полностью частным для компонента, который его объявляет.** Родительский компонент не может его изменить. Это позволяет вам добавлять состояние к любому компоненту или удалять его, не влияя на остальные компоненты.
+
+Что, если вы хотите, чтобы обе галереи синхронизировали свои состояния? Правильный способ сделать это в React — * удалить* состояние из дочерних компонентов и добавить его в их ближайший общий родительский компонент. На следующих страницах мы сосредоточимся на организации состояния отдельного компонента, но вернемся к этой теме в разделе [Обмен состоянием между компонентами.](/learn/sharing-state-between-components)
+
+## Вывод
+
+* Используйте переменную состояния, когда компоненту нужно 'запомнить' какую-то информацию между рендерингами.
+* Переменные состояния объявляются с помощью хука `useState`.
+* Хуки — это специальные функции, которые начинаются с `use`. Они позволяют вам 'подключаться' к таким функциям React, как состояние.
+* Хуки могут напоминать вам импорты: их нужно вызывать безоговорочно. Вызов хуков, включая `useState`, допустим только на верхнем уровне компонента или другого хука.
+* Хук `useState` возвращает пару значений: текущее состояние и функцию для его обновления.
+* У вас может быть более одной переменной состояния. Внутри React сопоставляет их по порядку.
+* Состояние является частным для компонента. Если вы отображаете его в двух местах, каждая копия получает собственное состояние.
