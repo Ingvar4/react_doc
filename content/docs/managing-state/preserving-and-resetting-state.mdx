@@ -1,0 +1,1120 @@
+---
+title: Сохранение и сброс state
+description: State изолирован между components. React отслеживает, какой state принадлежит какому component, исходя из его положения в UI tree. Вы можете управлять тем, когда state нужно сохранять, а когда сбрасывать между повторными рендерами.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+
+* Когда React решает сохранить state или сбросить его
+* Как заставить React сбросить state component
+* Как key и type влияют на сохранение state
+
+</Callout>
+
+## State привязан к позиции в render tree {/*state-is-tied-to-a-position-in-the-tree*/}
+
+React строит [render trees](learn/understanding-your-ui-as-a-tree#the-render-tree) для структуры components в вашем UI.
+
+Когда вы задаёте component state, может показаться, что state "живёт" внутри component. Но на самом деле state хранится внутри React. React связывает каждую часть state, которую он хранит, с правильным component по тому, где этот component находится в render tree.
+
+Здесь есть только один тег JSX `<Counter />`, но он рендерится в двух разных позициях:
+
+```js tab="Tab 1"
+import { useState } from 'react';
+
+export default function App() {
+  const counter = <Counter />;
+  return (
+    <div>
+      {counter}
+      {counter}
+    </div>
+  );
+}
+
+function Counter() {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(false);
+
+  let className = 'counter';
+  if (hover) {
+    className += ' hover';
+  }
+
+  return (
+    <div
+      className={className}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      <h1>{score}</h1>
+      <button onClick={() => setScore(score + 1)}>
+        Add one
+      </button>
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+label {
+  display: block;
+  clear: both;
+}
+
+.counter {
+  width: 100px;
+  text-align: center;
+  border: 1px solid gray;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 0 20px 20px 0;
+  float: left;
+}
+
+.hover {
+  background: #ffffd8;
+}
+```
+
+Вот как это выглядит в виде tree:
+
+<img src="/images/preserving_state_tree.webp" alt="1" style={{  height: '250px' }} />
+
+React tree
+
+**Это два отдельных counter, потому что каждый рендерится в своей собственной позиции в tree.** Обычно вам не нужно думать об этих позициях, чтобы использовать React, но полезно понимать, как это работает.
+
+В React у каждого component на экране полностью изолированный state. Например, если вы отрендерите два component `Counter` рядом, у каждого из них будет свой независимый state `score` и `hover`.
+
+Попробуйте нажать на оба counter и обратите внимание, что они не влияют друг на друга:
+
+```js tab="Tab 1"
+import { useState } from 'react';
+
+export default function App() {
+  return (
+    <div>
+      <Counter />
+      <Counter />
+    </div>
+  );
+}
+
+function Counter() {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(false);
+
+  let className = 'counter';
+  if (hover) {
+    className += ' hover';
+  }
+
+  return (
+    <div
+      className={className}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      <h1>{score}</h1>
+      <button onClick={() => setScore(score + 1)}>
+        Add one
+      </button>
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+.counter {
+  width: 100px;
+  text-align: center;
+  border: 1px solid gray;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 0 20px 20px 0;
+  float: left;
+}
+
+.hover {
+  background: #ffffd8;
+}
+```
+
+Как видите, когда обновляется один counter, обновляется только state этого component:
+
+<img src="/images/preserving_state_increment.webp" alt="1" style={{  height: '250px' }} />
+
+Обновление state
+
+React будет сохранять state до тех пор, пока вы рендерите один и тот же component в одной и той же позиции в tree. Чтобы увидеть это, увеличьте оба counter, затем удалите второй component, сняв галочку с чекбокса "Render the second counter", а потом верните его обратно, снова поставив галочку:
+
+```js tab="Tab 1"
+import { useState } from 'react';
+
+export default function App() {
+  const [showB, setShowB] = useState(true);
+  return (
+    <div>
+      <Counter />
+      {showB && <Counter />}
+      <label>
+        <input
+          type="checkbox"
+          checked={showB}
+          onChange={e => {
+            setShowB(e.target.checked)
+          }}
+        />
+        Render the second counter
+      </label>
+    </div>
+  );
+}
+
+function Counter() {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(false);
+
+  let className = 'counter';
+  if (hover) {
+    className += ' hover';
+  }
+
+  return (
+    <div
+      className={className}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      <h1>{score}</h1>
+      <button onClick={() => setScore(score + 1)}>
+        Add one
+      </button>
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+label {
+  display: block;
+  clear: both;
+}
+
+.counter {
+  width: 100px;
+  text-align: center;
+  border: 1px solid gray;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 0 20px 20px 0;
+  float: left;
+}
+
+.hover {
+  background: #ffffd8;
+}
+```
+
+Обратите внимание: в тот момент, когда вы перестаёте рендерить второй counter, его state полностью исчезает. Это потому, что когда React удаляет component, он уничтожает его state.
+
+<img src="/images/preserving_state_remove_component.webp" alt="1" style={{  height: 'auto' }} />
+
+Удаление component
+
+Когда вы ставите галочку "Render the second counter", второй `Counter` и его state инициализируются с нуля (`score = 0`) и добавляются в DOM.
+
+<img src="/images/preserving_state_add_component.webp" alt="1" style={{  height: 'auto' }} />
+
+Добавление component
+
+**React сохраняет state component до тех пор, пока этот component рендерится в своей позиции в UI tree.** Если его удаляют или в той же позиции рендерится другой component, React сбрасывает его state.
+
+## Один и тот же component в одной и той же позиции сохраняет state {/*same-component-at-the-same-position-preserves-state*/}
+
+В этом примере есть два разных тега `<Counter />`:
+
+```js tab="Tab 1"
+import { useState } from 'react';
+
+export default function App() {
+  const [isFancy, setIsFancy] = useState(false);
+  return (
+    <div>
+      {isFancy ? (
+        <Counter isFancy={true} />
+      ) : (
+        <Counter isFancy={false} />
+      )}
+      <label>
+        <input
+          type="checkbox"
+          checked={isFancy}
+          onChange={e => {
+            setIsFancy(e.target.checked)
+          }}
+        />
+        Use fancy styling
+      </label>
+    </div>
+  );
+}
+
+function Counter({ isFancy }) {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(false);
+
+  let className = 'counter';
+  if (hover) {
+    className += ' hover';
+  }
+  if (isFancy) {
+    className += ' fancy';
+  }
+
+  return (
+    <div
+      className={className}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      <h1>{score}</h1>
+      <button onClick={() => setScore(score + 1)}>
+        Add one
+      </button>
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+label {
+  display: block;
+  clear: both;
+}
+
+.counter {
+  width: 100px;
+  text-align: center;
+  border: 1px solid gray;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 0 20px 20px 0;
+  float: left;
+}
+
+.fancy {
+  border: 5px solid gold;
+  color: #ff6767;
+}
+
+.hover {
+  background: #ffffd8;
+}
+```
+
+Когда вы ставите или снимаете галочку, state counter не сбрасывается. Неважно, `isFancy` равен `true` или `false`, у вас всегда есть `<Counter />` в качестве первого child, возвращаемого корневым component `App`:
+
+<img src="/images/preserving_state_same_component.webp" alt="1" style={{  height: 'auto' }} />
+
+Обновление state `App` не сбрасывает `Counter`, потому что `Counter` остаётся в той же позиции
+
+Это один и тот же component в одной и той же позиции, поэтому с точки зрения React это один и тот же counter.
+
+<Callout type='idea'>
+
+Помните, что **для React важна позиция в UI tree, а не в JSX-разметке!** У этого component есть два `return`-выражения с разными тегами `<Counter />` внутри и снаружи `if`:
+
+```js tab="Tab 1"
+import { useState } from 'react';
+
+export default function App() {
+  const [isFancy, setIsFancy] = useState(false);
+  if (isFancy) {
+    return (
+      <div>
+        <Counter isFancy={true} />
+        <label>
+          <input
+            type="checkbox"
+            checked={isFancy}
+            onChange={e => {
+              setIsFancy(e.target.checked)
+            }}
+          />
+          Use fancy styling
+        </label>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <Counter isFancy={false} />
+      <label>
+        <input
+          type="checkbox"
+          checked={isFancy}
+          onChange={e => {
+            setIsFancy(e.target.checked)
+          }}
+        />
+        Use fancy styling
+      </label>
+    </div>
+  );
+}
+
+function Counter({ isFancy }) {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(false);
+
+  let className = 'counter';
+  if (hover) {
+    className += ' hover';
+  }
+  if (isFancy) {
+    className += ' fancy';
+  }
+
+  return (
+    <div
+      className={className}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      <h1>{score}</h1>
+      <button onClick={() => setScore(score + 1)}>
+        Add one
+      </button>
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+label {
+  display: block;
+  clear: both;
+}
+
+.counter {
+  width: 100px;
+  text-align: center;
+  border: 1px solid gray;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 0 20px 20px 0;
+  float: left;
+}
+
+.fancy {
+  border: 5px solid gold;
+  color: #ff6767;
+}
+
+.hover {
+  background: #ffffd8;
+}
+```
+
+Вы могли бы ожидать, что state сбросится, когда вы поставите галочку, но этого не происходит! Это потому, что **оба этих тега `<Counter />` рендерятся в одной и той же позиции.** React не знает, где именно вы размещаете условия внутри функции. Всё, что он "видит", — это tree, который вы возвращаете.
+
+В обоих случаях component `App` возвращает `<div>`, а первым child там находится `<Counter />`. Для React эти два counter имеют один и тот же "адрес": первый child первого child корня. Именно так React сопоставляет их между предыдущим и следующим рендерами, независимо от того, как вы структурируете логику.
+
+</Callout>
+
+## Разные components в одной и той же позиции сбрасывают state {/*different-components-at-the-same-position-reset-state*/}
+
+В этом примере при установке галочки `<Counter>` заменяется на `<p>`:
+
+```js tab="Tab 1"
+import { useState } from 'react';
+
+export default function App() {
+  const [isPaused, setIsPaused] = useState(false);
+  return (
+    <div>
+      {isPaused ? (
+        <p>See you later!</p>
+      ) : (
+        <Counter />
+      )}
+      <label>
+        <input
+          type="checkbox"
+          checked={isPaused}
+          onChange={e => {
+            setIsPaused(e.target.checked)
+          }}
+        />
+        Take a break
+      </label>
+    </div>
+  );
+}
+
+function Counter() {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(false);
+
+  let className = 'counter';
+  if (hover) {
+    className += ' hover';
+  }
+
+  return (
+    <div
+      className={className}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      <h1>{score}</h1>
+      <button onClick={() => setScore(score + 1)}>
+        Add one
+      </button>
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+label {
+  display: block;
+  clear: both;
+}
+
+.counter {
+  width: 100px;
+  text-align: center;
+  border: 1px solid gray;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 0 20px 20px 0;
+  float: left;
+}
+
+.hover {
+  background: #ffffd8;
+}
+```
+
+Здесь вы переключаетесь между _разными_ types components в одной и той же позиции. Изначально первый child `<div>` содержал `Counter`. Но когда вы подменили его на `p`, React удалил `Counter` из UI tree и уничтожил его state.
+
+<img src="/images/preserving_state_diff_pt1.webp" alt="1" style={{  height: 'auto' }} />
+
+Когда `Counter` меняется на `p`, `Counter` удаляется, а `p` добавляется
+
+<img src="/images/preserving_state_diff_pt2.webp" alt="1" style={{  height: 'auto' }} />
+
+При возврате обратно `p` удаляется, а `Counter` добавляется
+
+Также **когда вы рендерите другой component в той же позиции, state всего его subtree сбрасывается.** Чтобы увидеть это, увеличьте счётчик и затем поставьте галочку:
+
+```js tab="Tab 1"
+import { useState } from 'react';
+
+export default function App() {
+  const [isFancy, setIsFancy] = useState(false);
+  return (
+    <div>
+      {isFancy ? (
+        <div>
+          <Counter isFancy={true} />
+        </div>
+      ) : (
+        <section>
+          <Counter isFancy={false} />
+        </section>
+      )}
+      <label>
+        <input
+          type="checkbox"
+          checked={isFancy}
+          onChange={e => {
+            setIsFancy(e.target.checked)
+          }}
+        />
+        Use fancy styling
+      </label>
+    </div>
+  );
+}
+
+function Counter({ isFancy }) {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(false);
+
+  let className = 'counter';
+  if (hover) {
+    className += ' hover';
+  }
+  if (isFancy) {
+    className += ' fancy';
+  }
+
+  return (
+    <div
+      className={className}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      <h1>{score}</h1>
+      <button onClick={() => setScore(score + 1)}>
+        Add one
+      </button>
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+label {
+  display: block;
+  clear: both;
+}
+
+.counter {
+  width: 100px;
+  text-align: center;
+  border: 1px solid gray;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 0 20px 20px 0;
+  float: left;
+}
+
+.fancy {
+  border: 5px solid gold;
+  color: #ff6767;
+}
+
+.hover {
+  background: #ffffd8;
+}
+```
+
+State counter сбрасывается, когда вы нажимаете чекбокс. Хотя вы рендерите `Counter`, первый child `div` меняется с `section` на `div`. Когда child `section` был удалён из DOM, всё дерево под ним (включая `Counter` и его state) тоже было уничтожено.
+
+<img src="/images/preserving_state_diff_same_pt1.webp" alt="1" style={{  height: 'auto' }} />
+
+Когда `section` меняется на `div`, `section` удаляется, а новый `div` добавляется
+
+<img src="/images/preserving_state_diff_same_pt2.webp" alt="1" style={{  height: 'auto' }} />
+
+При возврате обратно `div` удаляется, а новый `section` добавляется
+
+Как правило, **если вы хотите сохранять state между повторными рендерами, структура вашего tree должна "совпадать"** от одного рендера к другому. Если структура отличается, state уничтожается, потому что React уничтожает state, когда удаляет component из tree.
+
+<Callout type='idea'>
+
+Вот почему не стоит вкладывать определения component-функций друг в друга.
+
+Здесь function `MyTextField` определена *внутри* `MyComponent`:
+
+```js
+import { useState } from 'react';
+
+export default function MyComponent() {
+  const [counter, setCounter] = useState(0);
+
+  function MyTextField() {
+    const [text, setText] = useState('');
+
+    return (
+      <input
+        value={text}
+        onChange={e => setText(e.target.value)}
+      />
+    );
+  }
+
+  return (
+    <>
+      <MyTextField />
+      <button onClick={() => {
+        setCounter(counter + 1)
+      }}>Clicked {counter} times</button>
+    </>
+  );
+}
+```
+
+Каждый раз, когда вы нажимаете кнопку, state input исчезает! Это происходит потому, что при каждом рендере `MyComponent` создаётся *другая* function `MyTextField`. Вы рендерите *другой* component в той же позиции, поэтому React сбрасывает весь state ниже. Это приводит к багам и проблемам с производительностью. Чтобы избежать этого, **всегда объявляйте component-функции на верхнем уровне и не вкладывайте их определения друг в друга.**
+
+</Callout>
+
+## Сброс state в той же позиции {/*resetting-state-at-the-same-position*/}
+
+По умолчанию React сохраняет state component, пока он остаётся в той же позиции. Обычно именно этого и хочется, поэтому это и является поведением по умолчанию. Но иногда вам нужно сбросить state component. Рассмотрим приложение, которое позволяет двум игрокам отслеживать свои очки в каждом ходе:
+
+```js tab="Tab 1"
+import { useState } from 'react';
+
+export default function Scoreboard() {
+  const [isPlayerA, setIsPlayerA] = useState(true);
+  return (
+    <div>
+      {isPlayerA ? (
+        <Counter person="Taylor" />
+      ) : (
+        <Counter person="Sarah" />
+      )}
+      <button onClick={() => {
+        setIsPlayerA(!isPlayerA);
+      }}>
+        Next player!
+      </button>
+    </div>
+  );
+}
+
+function Counter({ person }) {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(false);
+
+  let className = 'counter';
+  if (hover) {
+    className += ' hover';
+  }
+
+  return (
+    <div
+      className={className}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      <h1>{person}'s score: {score}</h1>
+      <button onClick={() => setScore(score + 1)}>
+        Add one
+      </button>
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+h1 {
+  font-size: 18px;
+}
+
+.counter {
+  width: 100px;
+  text-align: center;
+  border: 1px solid gray;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 0 20px 20px 0;
+}
+
+.hover {
+  background: #ffffd8;
+}
+```
+
+Сейчас, когда вы меняете игрока, score сохраняется. Два `Counter` находятся в одной и той же позиции, поэтому React видит их как *один и тот же* `Counter`, у которого изменился prop `person`.
+
+Но концептуально в этом приложении это должны быть два разных counter. Они могут находиться в одном и том же месте UI, но один — это counter для Taylor, а другой — для Sarah.
+
+Есть два способа сбрасывать state при переключении между ними:
+
+1. Рендерить components в разных позициях
+2. Давать каждому component явную идентичность с помощью `key`
+
+
+### Вариант 1: Рендер component в разных позициях {/*option-1-rendering-a-component-in-different-positions*/}
+
+Если вы хотите, чтобы эти два `Counter` были независимыми, можно рендерить их в двух разных позициях:
+
+```js tab="Tab 1"
+import { useState } from 'react';
+
+export default function Scoreboard() {
+  const [isPlayerA, setIsPlayerA] = useState(true);
+  return (
+    <div>
+      {isPlayerA &&
+        <Counter person="Taylor" />
+      }
+      {!isPlayerA &&
+        <Counter person="Sarah" />
+      }
+      <button onClick={() => {
+        setIsPlayerA(!isPlayerA);
+      }}>
+        Next player!
+      </button>
+    </div>
+  );
+}
+
+function Counter({ person }) {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(false);
+
+  let className = 'counter';
+  if (hover) {
+    className += ' hover';
+  }
+
+  return (
+    <div
+      className={className}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      <h1>{person}'s score: {score}</h1>
+      <button onClick={() => setScore(score + 1)}>
+        Add one
+      </button>
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+h1 {
+  font-size: 18px;
+}
+
+.counter {
+  width: 100px;
+  text-align: center;
+  border: 1px solid gray;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 0 20px 20px 0;
+}
+
+.hover {
+  background: #ffffd8;
+}
+```
+
+* Изначально `isPlayerA` равно `true`. Поэтому первая позиция содержит state `Counter`, а вторая — пустая.
+* Когда вы нажимаете кнопку "Next player", первая позиция очищается, а вторая теперь содержит `Counter`.
+
+<img src="/images/preserving_state_diff_position_p1.webp" alt="1" style={{  height: '150px' }} />
+
+Начальное state
+
+<img src="/images/preserving_state_diff_position_p2.webp" alt="1" style={{  height: '150px' }} />
+
+Нажатие "next"
+
+<img src="/images/preserving_state_diff_position_p3.webp" alt="1" style={{  height: '150px' }} />
+
+Снова нажимается "next"
+
+State каждого `Counter` уничтожается каждый раз, когда он удаляется из DOM. Поэтому он сбрасывается каждый раз при нажатии кнопки.
+
+Это решение удобно, когда у вас есть всего несколько независимых components, рендерящихся в одном и том же месте. В этом примере их только два, так что отдельно рендерить оба в JSX несложно.
+
+### Вариант 2: Сброс state с помощью key {/*option-2-resetting-state-with-a-key*/}
+
+Есть и другой, более универсальный способ сбросить state component.
+
+Вы, возможно, видели `key` при [рендере списков.](/learn/rendering-lists#keeping-list-items-in-order-with-key) `key` нужен не только для списков! Его можно использовать, чтобы заставить React различать любые components. По умолчанию React использует порядок внутри родителя ("первый counter", "второй counter"), чтобы различать components. Но `key` позволяет сказать React, что это не просто *первый* counter или *второй* counter, а конкретный counter — например, counter *Taylor*. Так React будет понимать, что это counter *Taylor* в любой позиции tree, где бы он ни появился!
+
+В этом примере два `<Counter />` не разделяют state, хотя и находятся в одном и том же месте JSX:
+
+```js tab="Tab 1"
+import { useState } from 'react';
+
+export default function Scoreboard() {
+  const [isPlayerA, setIsPlayerA] = useState(true);
+  return (
+    <div>
+      {isPlayerA ? (
+        <Counter key="Taylor" person="Taylor" />
+      ) : (
+        <Counter key="Sarah" person="Sarah" />
+      )}
+      <button onClick={() => {
+        setIsPlayerA(!isPlayerA);
+      }}>
+        Next player!
+      </button>
+    </div>
+  );
+}
+
+function Counter({ person }) {
+  const [score, setScore] = useState(0);
+  const [hover, setHover] = useState(false);
+
+  let className = 'counter';
+  if (hover) {
+    className += ' hover';
+  }
+
+  return (
+    <div
+      className={className}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+    >
+      <h1>{person}'s score: {score}</h1>
+      <button onClick={() => setScore(score + 1)}>
+        Add one
+      </button>
+    </div>
+  );
+}
+```
+
+```js tab="Tab 2"
+h1 {
+  font-size: 18px;
+}
+
+.counter {
+  width: 100px;
+  text-align: center;
+  border: 1px solid gray;
+  border-radius: 4px;
+  padding: 20px;
+  margin: 0 20px 20px 0;
+}
+
+.hover {
+  background: #ffffd8;
+}
+```
+
+Переключение между Taylor и Sarah не сохраняет state. Это потому, что вы задали им разные `key`:
+
+```js
+{isPlayerA ? (
+  <Counter key="Taylor" person="Taylor" />
+) : (
+  <Counter key="Sarah" person="Sarah" />
+)}
+```
+
+Указание `key` говорит React использовать сам `key` как часть позиции вместо порядка внутри родителя. Именно поэтому, хотя вы рендерите их в одном и том же месте JSX, React видит их как два разных counter, и они никогда не будут делить state. Каждый раз, когда counter появляется на экране, его state создаётся заново. Каждый раз, когда он удаляется, его state уничтожается. Переключение между ними снова и снова сбрасывает их state.
+
+<Callout>
+
+Помните, что `key` не являются глобально уникальными. Они задают позицию только *внутри родителя*.
+
+</Callout>
+
+### Сброс формы с помощью key {/*resetting-a-form-with-a-key*/}
+
+Сброс state с помощью key особенно полезен при работе с формами.
+
+В этом chat app component `<Chat>` содержит state текстового input:
+
+```js tab="Tab 1"
+//App.js
+import { useState } from 'react';
+import Chat from './Chat.js';
+import ContactList from './ContactList.js';
+
+export default function Messenger() {
+  const [to, setTo] = useState(contacts[0]);
+  return (
+    <div>
+      <ContactList
+        contacts={contacts}
+        selectedContact={to}
+        onSelect={contact => setTo(contact)}
+      />
+      <Chat contact={to} />
+    </div>
+  )
+}
+
+const contacts = [
+  { id: 0, name: 'Taylor', email: 'taylor@mail.com' },
+  { id: 1, name: 'Alice', email: 'alice@mail.com' },
+  { id: 2, name: 'Bob', email: 'bob@mail.com' }
+];
+```
+```js tab="Tab 2"
+//ContactList.js
+export default function ContactList({
+  selectedContact,
+  contacts,
+  onSelect
+}) {
+  return (
+    <section className="contact-list">
+      <ul>
+        {contacts.map(contact =>
+          <li key={contact.id}>
+            <button onClick={() => {
+              onSelect(contact);
+            }}>
+              {contact.name}
+            </button>
+          </li>
+        )}
+      </ul>
+    </section>
+  );
+}
+```
+```js tab="Tab 3"
+//Chat.js
+import { useState } from 'react';
+
+export default function Chat({ contact }) {
+  const [text, setText] = useState('');
+  return (
+    <section className="chat">
+      <textarea
+        value={text}
+        placeholder={'Chat to ' + contact.name}
+        onChange={e => setText(e.target.value)}
+      />
+      <br />
+      <button>Send to {contact.email}</button>
+    </section>
+  );
+}
+```
+
+```js tab="Tab 4"
+.chat, .contact-list {
+  float: left;
+  margin-bottom: 20px;
+}
+ul, li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+li button {
+  width: 100px;
+  padding: 10px;
+  margin-right: 10px;
+}
+textarea {
+  height: 150px;
+}
+```
+
+Попробуйте ввести что-нибудь в input, а затем нажать "Alice" или "Bob", чтобы выбрать другого получателя. Вы заметите, что state input сохраняется, потому что `<Chat>` рендерится в той же позиции в tree.
+
+**Во многих приложениях это может быть желаемым поведением, но не в chat app!** Вы же не хотите позволить пользователю случайно отправить уже набранное сообщение не тому человеку. Чтобы исправить это, добавьте `key`:
+
+```js
+<Chat key={to.id} contact={to} />
+```
+
+Это гарантирует, что при выборе другого получателя component `Chat` будет создан заново с нуля, включая любой state ниже по tree. React также пересоздаст DOM elements вместо повторного использования.
+
+Теперь при смене получателя поле текста всегда очищается:
+
+```js tab="Tab 1"
+//App.js
+import { useState } from 'react';
+import Chat from './Chat.js';
+import ContactList from './ContactList.js';
+
+export default function Messenger() {
+  const [to, setTo] = useState(contacts[0]);
+  return (
+    <div>
+      <ContactList
+        contacts={contacts}
+        selectedContact={to}
+        onSelect={contact => setTo(contact)}
+      />
+      <Chat key={to.id} contact={to} />
+    </div>
+  )
+}
+
+const contacts = [
+  { id: 0, name: 'Taylor', email: 'taylor@mail.com' },
+  { id: 1, name: 'Alice', email: 'alice@mail.com' },
+  { id: 2, name: 'Bob', email: 'bob@mail.com' }
+];
+```
+```js tab="Tab 2"
+//ContactList.js
+export default function ContactList({
+  selectedContact,
+  contacts,
+  onSelect
+}) {
+  return (
+    <section className="contact-list">
+      <ul>
+        {contacts.map(contact =>
+          <li key={contact.id}>
+            <button onClick={() => {
+              onSelect(contact);
+            }}>
+              {contact.name}
+            </button>
+          </li>
+        )}
+      </ul>
+    </section>
+  );
+}
+```
+```js tab="Tab 3"
+//Chat.js
+import { useState } from 'react';
+
+export default function Chat({ contact }) {
+  const [text, setText] = useState('');
+  return (
+    <section className="chat">
+      <textarea
+        value={text}
+        placeholder={'Chat to ' + contact.name}
+        onChange={e => setText(e.target.value)}
+      />
+      <br />
+      <button>Send to {contact.email}</button>
+    </section>
+  );
+}
+```
+```js tab="Tab 4"
+.chat, .contact-list {
+  float: left;
+  margin-bottom: 20px;
+}
+ul, li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+li button {
+  width: 100px;
+  padding: 10px;
+  margin-right: 10px;
+}
+textarea {
+  height: 150px;
+}
+```
+
+<Callout type='idea'>
+
+#### Сохранение state для удалённых components {/*preserving-state-for-removed-components*/}
+
+В реальном chat app, вероятно, вам хотелось бы восстановить state input, когда пользователь снова выбирает предыдущего получателя. Есть несколько способов оставить state "живым" для component, который больше не виден:
+
+- Можно рендерить _все_ chats, а не только текущий, и скрывать остальные с помощью CSS. Chats не будут удаляться из tree, поэтому их локальный state сохранится. Это отлично работает для простых UI. Но может стать очень медленным, если скрытые tree большие и содержат много DOM nodes.
+- Можно [поднять state вверх](/learn/sharing-state-between-components) и хранить черновик сообщения для каждого получателя в parent component. Тогда, когда child components удаляются, это не имеет значения, потому что важная информация остаётся у parent. Это самый распространённый способ.
+- Можно также использовать другой источник данных помимо React state. Например, вам, вероятно, нужно, чтобы черновик сообщения сохранялся даже если пользователь случайно закрыл страницу. Для этого component `Chat` может инициализировать свой state, читая данные из [`localStorage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage), и сохранять черновики туда же.
+
+Какую бы стратегию вы ни выбрали, chat _с Alice_ концептуально отличается от chat _с Bob_, поэтому имеет смысл задать `key` для tree `<Chat>` на основе текущего получателя.
+
+</Callout>
+
+## Вывод
+
+- React сохраняет state, пока один и тот же component рендерится в одной и той же позиции.
+- State хранится не в тегах JSX. Он связан с позицией в tree, куда вы поместили этот JSX.
+- Вы можете заставить subtree сбросить state, задав ему другой `key`.
+- Не вкладывайте определения component, иначе вы случайно будете сбрасывать state.

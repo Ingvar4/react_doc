@@ -1,0 +1,262 @@
+---
+title: Совместное использование state между компонентами
+description: Иногда вам нужно, чтобы state двух компонентов всегда изменялся вместе. Для этого уберите state из обоих компонентов, перенесите его в ближайший общий родительский компонент, а затем передайте его вниз через props. Это называется *поднятием state*, и это одна из самых распространённых вещей, которые вы будете делать при написании кода на React.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+
+- Как делиться state между компонентами, поднимая его вверх
+- Что такое controlled и uncontrolled компоненты
+</Callout>
+
+## Поднятие state на примере {/*lifting-state-up-by-example*/}
+
+В этом примере родительский компонент `Accordion` рендерит два отдельных `Panel`:
+
+* `Accordion`
+  - `Panel`
+  - `Panel`
+
+У каждого компонента `Panel` есть boolean state `isActive`, который определяет, виден ли его контент.
+
+Нажмите кнопку Show у обоих панелей:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  function Panel({ title, children }) {
+    const [isActive, setIsActive] = useState(false);
+    return (
+      <section className="panel">
+        <h3>{title}</h3>
+        {isActive ? (
+          <p>{children}</p>
+        ) : (
+          <button onClick={() => setIsActive(true)}>
+            Show
+          </button>
+        )}
+      </section>
+    );
+  }
+
+  export default function Accordion() {
+    return (
+      <>
+        <h2>Almaty, Kazakhstan</h2>
+        <Panel title="About">
+          With a population of about 2 million, Almaty is Kazakhstan's largest city. From 1929 to 1997, it was its capital city.
+        </Panel>
+        <Panel title="Etymology">
+          The name comes from <span lang="kk-KZ">алма</span>, the Kazakh word for "apple" and is often translated as "full of apples". In fact, the region surrounding Almaty is thought to be the ancestral home of the apple, and the wild <i lang="la">Malus sieversii</i> is considered a likely candidate for the ancestor of the modern domestic apple.
+        </Panel>
+      </>
+    );
+  }`}
+/>
+
+Обратите внимание, что нажатие на кнопку одной панели не влияет на другую панель — они независимы.
+
+<img src="/images/sharing_state_child.webp" alt="1" style={{  height: '250px' }} />
+
+Изначально state `isActive` у каждого `Panel` равен `false`, поэтому обе панели выглядят свернутыми
+
+<img src="/images/sharing_state_child_clicked.webp" alt="1" style={{  height: '250px' }} />
+
+Нажатие на кнопку любой из панелей изменит только state `isActive` у этой панели
+
+
+**Но теперь представим, что вы хотите изменить поведение так, чтобы одновременно была раскрыта только одна панель.** В таком варианте при раскрытии второй панели первая должна сворачиваться. Как это сделать?
+
+Чтобы скоординировать эти две панели, нужно “поднять их state вверх” в родительский компонент в три шага:
+
+1. **Удалите** state из дочерних компонентов.
+2. **Передайте** жёстко заданные данные из общего родителя.
+3. **Добавьте** state в общий родитель и передавайте его вниз вместе с обработчиками событий.
+
+Это позволит компоненту `Accordion` управлять обоими `Panel` и раскрывать только одну панель за раз.
+
+### Шаг 1: Удалите state из дочерних компонентов {/*step-1-remove-state-from-the-child-components*/}
+
+Вы передадите управление `isActive` компонента `Panel` его родительскому компоненту. Это значит, что родительский компонент будет передавать `isActive` в `Panel` как prop. Для начала **удалите эту строку** из компонента `Panel`:
+
+```js
+const [isActive, setIsActive] = useState(false);
+```
+
+И вместо этого добавьте `isActive` в список props компонента `Panel`:
+
+```js
+function Panel({ title, children, isActive }) {
+```
+
+Теперь родительский компонент `Panel` может *управлять* `isActive`, [передавая его вниз как prop.](/learn/passing-props-to-a-component) А сам компонент `Panel` теперь *не контролирует* значение `isActive` — теперь это задача родительского компонента!
+
+### Шаг 2: Передайте жёстко заданные данные из общего родителя {/*step-2-pass-hardcoded-data-from-the-common-parent*/}
+
+Чтобы поднять state вверх, нужно найти ближайший общий родительский компонент для *обоих* дочерних компонентов, которые вы хотите скоординировать:
+
+* `Accordion` *(ближайший общий родитель)*
+  - `Panel`
+  - `Panel`
+
+В этом примере это компонент `Accordion`. Поскольку он находится выше обоих панелей и может управлять их props, он станет “источником истины” для того, какая панель сейчас активна. Передайте компоненту `Accordion` жёстко заданное значение `isActive` (например, `true`) обеим панелям:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  export default function Accordion() {
+    return (
+      <>
+        <h2>Almaty, Kazakhstan</h2>
+        <Panel title="About" isActive={true}>
+          With a population of about 2 million, Almaty is Kazakhstan's largest city. From 1929 to 1997, it was its capital city.
+        </Panel>
+        <Panel title="Etymology" isActive={true}>
+          The name comes from <span lang="kk-KZ">алма</span>, the Kazakh word for "apple" and is often translated as "full of apples". In fact, the region surrounding Almaty is thought to be the ancestral home of the apple, and the wild <i lang="la">Malus sieversii</i> is considered a likely candidate for the ancestor of the modern domestic apple.
+        </Panel>
+      </>
+    );
+  }
+
+  function Panel({ title, children, isActive }) {
+    return (
+      <section className="panel">
+        <h3>{title}</h3>
+        {isActive ? (
+          <p>{children}</p>
+        ) : (
+          <button onClick={() => setIsActive(true)}>
+            Show
+          </button>
+        )}
+      </section>
+    );
+  }`}
+/>
+
+Попробуйте изменить жёстко заданные значения `isActive` в компоненте `Accordion` и посмотрите, как это отразится на экране.
+
+### Шаг 3: Добавьте state в общий родитель {/*step-3-add-state-to-the-common-parent*/}
+
+Поднятие state вверх часто меняет саму природу того, что вы храните как state.
+
+В этом случае активной должна быть только одна панель за раз. Это значит, что общий родительский компонент `Accordion` должен отслеживать, *какая именно* панель активна. Вместо boolean-значения можно использовать число как индекс активного `Panel` в переменной state:
+
+```js
+const [activeIndex, setActiveIndex] = useState(0);
+```
+
+Когда `activeIndex` равен `0`, активна первая панель, а когда `1` — вторая.
+
+Нажатие кнопки "Show" в любом из `Panel` должно изменять активный индекс в `Accordion`. Сам `Panel` не может напрямую изменить state `activeIndex`, потому что он объявлен внутри `Accordion`. Компонент `Accordion` должен *явно разрешить* компоненту `Panel` изменять свой state, [передав обработчик события вниз как prop](/learn/responding-to-events#passing-event-handlers-as-props):
+
+```js
+<>
+  <Panel
+    isActive={activeIndex === 0}
+    onShow={() => setActiveIndex(0)}
+  >
+    ...
+  </Panel>
+  <Panel
+    isActive={activeIndex === 1}
+    onShow={() => setActiveIndex(1)}
+  >
+    ...
+  </Panel>
+</>
+```
+
+Теперь `<button>` внутри `Panel` будет использовать prop `onShow` как обработчик события click:
+
+<Sandpack code={
+`import { useState } from 'react';
+
+  export default function Accordion() {
+    const [activeIndex, setActiveIndex] = useState(0);
+    return (
+      <>
+        <h2>Almaty, Kazakhstan</h2>
+        <Panel
+          title="About"
+          isActive={activeIndex === 0}
+          onShow={() => setActiveIndex(0)}
+        >
+          With a population of about 2 million, Almaty is Kazakhstan's largest city. From 1929 to 1997, it was its capital city.
+        </Panel>
+        <Panel
+          title="Etymology"
+          isActive={activeIndex === 1}
+          onShow={() => setActiveIndex(1)}
+        >
+          The name comes from <span lang="kk-KZ">алма</span>, the Kazakh word for "apple" and is often translated as "full of apples". In fact, the region surrounding Almaty is thought to be the ancestral home of the apple, and the wild <i lang="la">Malus sieversii</i> is considered a likely candidate for the ancestor of the modern domestic apple.
+        </Panel>
+      </>
+    );
+  }
+
+  function Panel({
+    title,
+    children,
+    isActive,
+    onShow
+  }) {
+    return (
+      <section className="panel">
+        <h3>{title}</h3>
+        {isActive ? (
+          <p>{children}</p>
+        ) : (
+          <button onClick={onShow}>
+            Show
+          </button>
+        )}
+      </section>
+    );
+  }`}
+/>
+
+На этом поднятие state вверх завершено! Перемещение state в общий родительский компонент позволило вам скоординировать две панели. Использование активного индекса вместо двух флагов “показано/не показано” гарантировало, что в любой момент активна только одна панель. А передача обработчика события вниз дочернему компоненту позволила дочернему компоненту изменять state родителя.
+
+<img src="/images/sharing_state_parent.webp" alt="1" style={{  height: '250px' }} />
+
+Изначально `activeIndex` у `Accordion` равен `0`, поэтому первый `Panel` получает `isActive = true`
+
+<img src="/images/sharing_state_parent_clicked.webp" alt="1" style={{  height: '250px' }} />
+
+Когда state `activeIndex` у `Accordion` меняется на `1`, второй `Panel` вместо этого получает `isActive = true`
+
+<Callout type='idea'>
+
+#### Controlled и uncontrolled компоненты {/*controlled-and-uncontrolled-components*/}
+
+Обычно компонент с некоторым локальным state называют “uncontrolled”. Например, исходный компонент `Panel` с переменной state `isActive` является uncontrolled, потому что его родитель не может влиять на то, активна панель или нет.
+
+Напротив, компонент можно назвать “controlled”, когда важная информация в нём управляется props, а не собственным локальным state. Это позволяет родительскому компоненту полностью задавать его поведение. Итоговый компонент `Panel` с prop `isActive` управляется компонентом `Accordion`.
+
+Uncontrolled-компоненты проще использовать внутри своих родителей, потому что им требуется меньше настройки. Но они менее гибкие, когда нужно скоординировать их между собой. Controlled-компоненты максимально гибкие, но от родительских компонентов требуется полностью настраивать их через props.
+
+На практике термины “controlled” и “uncontrolled” не являются жёсткими техническими определениями — у каждого компонента обычно есть смесь локального state и props. Однако это удобный способ говорить о том, как спроектированы компоненты и какие возможности они предоставляют.
+
+При написании компонента подумайте, какая информация в нём должна быть controlled (через props), а какая — uncontrolled (через state). Но вы всегда можете передумать и позже провести рефакторинг.
+
+</Callout>
+
+## Один источник истины для каждого state {/*a-single-source-of-truth-for-each-state*/}
+
+В React-приложении у многих компонентов будет свой собственный state. Некоторый state может “жить” ближе к листовым компонентам (компонентам внизу дерева), например у полей ввода. Другой state может “жить” ближе к верхней части приложения. Например, даже client-side routing-библиотеки обычно реализуются с хранением текущего маршрута в state React и передачей его вниз через props!
+
+**Для каждой отдельной части state вы будете выбирать компонент, который ей “владеет”.** Этот принцип также известен как наличие ["единственного источника истины".](https://en.wikipedia.org/wiki/Single_source_of_truth) Это не означает, что весь state должен жить в одном месте — это означает, что для _каждой_ части state существует _конкретный_ компонент, который хранит эту информацию. Вместо дублирования общего state между компонентами, *поднимайте его вверх* к их общему родителю и *передавайте вниз* дочерним компонентам, которым он нужен.
+
+Ваше приложение будет меняться по мере работы над ним. Очень часто вы будете опускать state вниз или поднимать его обратно, пока ещё только выясняете, где именно каждая часть state “живёт”. Это нормальная часть процесса!
+
+Чтобы увидеть это на практике с несколькими дополнительными компонентами, прочитайте [Thinking in React.](/learn/thinking-in-react)
+
+## Вывод
+
+* Когда нужно скоординировать два компонента, перенесите их state в их общего родителя.
+* Затем передавайте информацию вниз через props от общего родителя.
+* Наконец, передавайте вниз обработчики событий, чтобы дочерние компоненты могли менять state родителя.
+* Полезно рассматривать компоненты как “controlled” (управляемые props) или “uncontrolled” (управляемые state).

@@ -1,0 +1,1092 @@
+---
+title: Извлечение логики state в reducer
+description: Компоненты с множеством обновлений state, разбросанных по разным обработчикам событий, могут быстро стать слишком сложными. В таких случаях можно вынести всю логику обновления state за пределы компонента в одну функцию, которая называется reducer.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+
+- Что такое функция reducer
+- Как перейти с `useState` на `useReducer`
+- Когда стоит использовать reducer
+- Как хорошо его писать
+
+</Callout>
+
+## Объединяйте логику state с помощью reducer {/*consolidate-state-logic-with-a-reducer*/}
+
+По мере усложнения компонентов становится труднее с первого взгляда понять все разные способы, которыми обновляется state компонента. Например, компонент `TaskApp` ниже хранит в state массив `tasks` и использует три разных обработчика событий для добавления, удаления и редактирования задач:
+
+```js tab="Tab 1"
+//App.js
+import { useState } from 'react';
+import AddTask from './AddTask.js';
+import TaskList from './TaskList.js';
+
+export default function TaskApp() {
+  const [tasks, setTasks] = useState(initialTasks);
+
+  function handleAddTask(text) {
+    setTasks([
+      ...tasks,
+      {
+        id: nextId++,
+        text: text,
+        done: false,
+      },
+    ]);
+  }
+
+  function handleChangeTask(task) {
+    setTasks(
+      tasks.map((t) => {
+        if (t.id === task.id) {
+          return task;
+        } else {
+          return t;
+        }
+      })
+    );
+  }
+
+  function handleDeleteTask(taskId) {
+    setTasks(tasks.filter((t) => t.id !== taskId));
+  }
+
+  return (
+    <>
+      <h1>Prague itinerary</h1>
+      <AddTask onAddTask={handleAddTask} />
+      <TaskList
+        tasks={tasks}
+        onChangeTask={handleChangeTask}
+        onDeleteTask={handleDeleteTask}
+      />
+    </>
+  );
+}
+
+let nextId = 3;
+const initialTasks = [
+  {id: 0, text: 'Visit Kafka Museum', done: true},
+  {id: 1, text: 'Watch a puppet show', done: false},
+  {id: 2, text: 'Lennon Wall pic', done: false},
+];
+```
+
+```js tab="Tab 2"
+//AddTask.js hidden
+import { useState } from 'react';
+
+export default function AddTask({onAddTask}) {
+  const [text, setText] = useState('');
+  return (
+    <>
+      <input
+        placeholder="Add task"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <button
+        onClick={() => {
+          setText('');
+          onAddTask(text);
+        }}>
+        Add
+      </button>
+    </>
+  );
+}
+```
+
+```js tab="Tab 3"
+//TaskList.js hidden
+import { useState } from 'react';
+
+export default function TaskList({tasks, onChangeTask, onDeleteTask}) {
+  return (
+    <ul>
+      {tasks.map((task) => (
+        <li key={task.id}>
+          <Task task={task} onChange={onChangeTask} onDelete={onDeleteTask} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Task({task, onChange, onDelete}) {
+  const [isEditing, setIsEditing] = useState(false);
+  let taskContent;
+  if (isEditing) {
+    taskContent = (
+      <>
+        <input
+          value={task.text}
+          onChange={(e) => {
+            onChange({
+              ...task,
+              text: e.target.value,
+            });
+          }}
+        />
+        <button onClick={() => setIsEditing(false)}>Save</button>
+      </>
+    );
+  } else {
+    taskContent = (
+      <>
+        {task.text}
+        <button onClick={() => setIsEditing(true)}>Edit</button>
+      </>
+    );
+  }
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={task.done}
+        onChange={(e) => {
+          onChange({
+            ...task,
+            done: e.target.checked,
+          });
+        }}
+      />
+      {taskContent}
+      <button onClick={() => onDelete(task.id)}>Delete</button>
+    </label>
+  );
+}
+```
+
+```js tab="Tab 4"
+//css
+button {
+  margin: 5px;
+}
+li {
+  list-style-type: none;
+}
+ul,
+li {
+  margin: 0;
+  padding: 0;
+}
+```
+
+Каждый из обработчиков событий вызывает `setTasks`, чтобы обновить state. По мере роста компонента растёт и количество логики state, разбросанной по нему. Чтобы уменьшить сложность и держать всю логику в одном удобном месте, можно вынести эту логику state в одну функцию вне компонента, **называемую "reducer"**.
+
+Reducer — это другой способ работать со state. Перейти с `useState` на `useReducer` можно в три шага:
+
+1. **Перейти** от установки state к dispatch действий.
+2. **Написать** функцию reducer.
+3. **Использовать** reducer в компоненте.
+
+### Шаг 1: Перейдите от установки state к dispatch действий {/*step-1-move-from-setting-state-to-dispatching-actions*/}
+
+Сейчас ваши обработчики событий описывают _что сделать_, изменяя state:
+
+```js
+function handleAddTask(text) {
+  setTasks([
+    ...tasks,
+    {
+      id: nextId++,
+      text: text,
+      done: false,
+    },
+  ]);
+}
+
+function handleChangeTask(task) {
+  setTasks(
+    tasks.map((t) => {
+      if (t.id === task.id) {
+        return task;
+      } else {
+        return t;
+      }
+    })
+  );
+}
+
+function handleDeleteTask(taskId) {
+  setTasks(tasks.filter((t) => t.id !== taskId));
+}
+```
+
+Уберите всю логику установки state. То, что останется, — это три обработчика событий:
+
+- `handleAddTask(text)` вызывается, когда пользователь нажимает "Add".
+- `handleChangeTask(task)` вызывается, когда пользователь переключает задачу или нажимает "Save".
+- `handleDeleteTask(taskId)` вызывается, когда пользователь нажимает "Delete".
+
+Работа со state через reducer немного отличается от прямой установки state. Вместо того чтобы говорить React "что сделать" через установку state, вы указываете "что только что сделал пользователь", отправляя из обработчиков событий "actions". (Логика обновления state будет находиться в другом месте!) Поэтому вместо "установки `tasks`" через обработчик события вы отправляете action "добавлена/изменена/удалена задача". Это лучше описывает намерение пользователя.
+
+```js
+function handleAddTask(text) {
+  dispatch({
+    type: 'added',
+    id: nextId++,
+    text: text,
+  });
+}
+
+function handleChangeTask(task) {
+  dispatch({
+    type: 'changed',
+    task: task,
+  });
+}
+
+function handleDeleteTask(taskId) {
+  dispatch({
+    type: 'deleted',
+    id: taskId,
+  });
+}
+```
+
+Объект, который вы передаёте в `dispatch`, называется "action":
+
+```js {3-7}
+function handleDeleteTask(taskId) {
+  dispatch(
+    // объект "action":
+    {
+      type: 'deleted',
+      id: taskId,
+    }
+  );
+}
+```
+
+Это обычный JavaScript-объект. Вы сами решаете, что в него положить, но в целом в нём должна быть минимальная информация о том, _что произошло_. (Саму функцию `dispatch` вы добавите на следующем шаге.)
+
+<Callout>
+
+Объект action может иметь любую форму.
+
+По соглашению обычно в нём указывают строковый `type`, который описывает, что произошло, а дополнительную информацию передают в других полях. `type` специфичен для компонента, поэтому в этом примере подойдут и `'added'`, и `'added_task'`. Выбирайте имя, которое говорит о том, что произошло!
+
+```js
+dispatch({
+  // специфично для компонента
+  type: 'what_happened',
+  // другие поля пишите здесь
+});
+```
+
+</Callout>
+
+### Шаг 2: Напишите функцию reducer {/*step-2-write-a-reducer-function*/}
+
+Функция reducer — это место, куда вы поместите логику state. Она принимает два аргумента: текущее состояние и объект action, а затем возвращает следующее состояние:
+
+```js
+function yourReducer(state, action) {
+  // вернуть следующее состояние для установки в React
+}
+```
+
+React установит state в то значение, которое вы вернёте из reducer.
+
+Чтобы перенести логику установки state из обработчиков событий в функцию reducer в этом примере, нужно:
+
+1. Объявить текущее состояние (`tasks`) первым аргументом.
+2. Объявить объект `action` вторым аргументом.
+3. Возвращать _следующее_ состояние из reducer (его React и установит в state).
+
+Вот как вся логика установки state переносится в функцию reducer:
+
+```js
+function tasksReducer(tasks, action) {
+  if (action.type === 'added') {
+    return [
+      ...tasks,
+      {
+        id: action.id,
+        text: action.text,
+        done: false,
+      },
+    ];
+  } else if (action.type === 'changed') {
+    return tasks.map((t) => {
+      if (t.id === action.task.id) {
+        return action.task;
+      } else {
+        return t;
+      }
+    });
+  } else if (action.type === 'deleted') {
+    return tasks.filter((t) => t.id !== action.id);
+  } else {
+    throw Error('Unknown action: ' + action.type);
+  }
+}
+```
+
+Поскольку функция reducer принимает state (`tasks`) как аргумент, вы можете **объявить её вне компонента.** Это уменьшает уровень вложенности и делает код легче для чтения.
+
+<Callout>
+
+В коде выше используются if/else, но по соглашению внутри reducer обычно применяют [switch statements](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/switch). Результат тот же, но switch обычно легче быстро прочитать.
+
+Дальше в этой документации мы будем использовать их именно так:
+
+```js
+function tasksReducer(tasks, action) {
+  switch (action.type) {
+    case 'added': {
+      return [
+        ...tasks,
+        {
+          id: action.id,
+          text: action.text,
+          done: false,
+        },
+      ];
+    }
+    case 'changed': {
+      return tasks.map((t) => {
+        if (t.id === action.task.id) {
+          return action.task;
+        } else {
+          return t;
+        }
+      });
+    }
+    case 'deleted': {
+      return tasks.filter((t) => t.id !== action.id);
+    }
+    default: {
+      throw Error('Unknown action: ' + action.type);
+    }
+  }
+}
+```
+
+Мы рекомендуем оборачивать каждый блок `case` в фигурные скобки `{` и `}`, чтобы переменные, объявленные внутри разных `case`, не конфликтовали друг с другом. Кроме того, `case` обычно должен заканчиваться `return`. Если забыть `return`, код "провалится" в следующий `case`, и это может привести к ошибкам!
+
+Если вы пока не уверенно чувствуете себя со switch statements, использовать if/else — вполне нормально.
+
+</Callout>
+
+<Callout type='idea'>
+
+#### Почему reducer так называется? {/*why-are-reducers-called-this-way*/}
+
+Хотя reducers могут "сократить" количество кода внутри компонента, на самом деле они названы по операции [`reduce()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/Reduce), которую можно выполнять над массивами.
+
+Операция `reduce()` позволяет взять массив и "собрать" из множества значений одно:
+
+```
+const arr = [1, 2, 3, 4, 5];
+const sum = arr.reduce(
+  (result, number) => result + number
+); // 1 + 2 + 3 + 4 + 5
+```
+
+Функция, которую вы передаёте в `reduce`, называется "reducer". Она принимает _промежуточный результат_ и _текущий элемент_, а затем возвращает _следующий результат_. React reducers работают по той же идее: они принимают _текущее состояние_ и _action_, а возвращают _следующее состояние_. Так они накапливают actions во времени в state.
+
+Вы даже можете использовать метод `reduce()` с `initialState` и массивом `actions`, чтобы вычислить конечное состояние, передав в него свою функцию reducer:
+
+```js tab="Tab 1"
+//index.js active
+import tasksReducer from './tasksReducer.js';
+
+let initialState = [];
+let actions = [
+  {type: 'added', id: 1, text: 'Visit Kafka Museum'},
+  {type: 'added', id: 2, text: 'Watch a puppet show'},
+  {type: 'deleted', id: 1},
+  {type: 'added', id: 3, text: 'Lennon Wall pic'},
+];
+
+let finalState = actions.reduce(tasksReducer, initialState);
+
+const output = document.getElementById('output');
+output.textContent = JSON.stringify(finalState, null, 2);
+```
+
+```js tab="Tab 2"
+//tasksReducer.js
+export default function tasksReducer(tasks, action) {
+  switch (action.type) {
+    case 'added': {
+      return [
+        ...tasks,
+        {
+          id: action.id,
+          text: action.text,
+          done: false,
+        },
+      ];
+    }
+    case 'changed': {
+      return tasks.map((t) => {
+        if (t.id === action.task.id) {
+          return action.task;
+        } else {
+          return t;
+        }
+      });
+    }
+    case 'deleted': {
+      return tasks.filter((t) => t.id !== action.id);
+    }
+    default: {
+      throw Error('Unknown action: ' + action.type);
+    }
+  }
+}
+```
+
+```js tab="Tab 3"
+//index.html
+<pre id="output"></pre>
+```
+
+Скорее всего, вам не придётся делать это вручную, но по сути React делает нечто похожее!
+
+</Callout>
+
+### Шаг 3: Используйте reducer в компоненте {/*step-3-use-the-reducer-from-your-component*/}
+
+Наконец, нужно подключить `tasksReducer` к вашему компоненту. Импортируйте Hook `useReducer` из React:
+
+```js
+import { useReducer } from 'react';
+```
+
+Затем замените `useState`:
+
+```js
+const [tasks, setTasks] = useState(initialTasks);
+```
+
+на `useReducer` вот так:
+
+```js
+const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
+```
+
+Hook `useReducer` похож на `useState` — вы должны передать ему начальное состояние, и он вернёт значение state и способ его обновить (в данном случае функцию dispatch). Но есть небольшие отличия.
+
+Hook `useReducer` принимает два аргумента:
+
+1. Функцию reducer
+2. Начальное состояние
+
+И возвращает:
+
+1. Значение state
+2. Функцию dispatch (для "отправки" пользовательских actions в reducer)
+
+Теперь всё подключено полностью! Здесь reducer объявлен внизу файла компонента:
+
+```js tab="Tab 1"
+//App.js
+import { useReducer } from 'react';
+import AddTask from './AddTask.js';
+import TaskList from './TaskList.js';
+
+export default function TaskApp() {
+  const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
+
+  function handleAddTask(text) {
+    dispatch({
+      type: 'added',
+      id: nextId++,
+      text: text,
+    });
+  }
+
+  function handleChangeTask(task) {
+    dispatch({
+      type: 'changed',
+      task: task,
+    });
+  }
+
+  function handleDeleteTask(taskId) {
+    dispatch({
+      type: 'deleted',
+      id: taskId,
+    });
+  }
+
+  return (
+    <>
+      <h1>Prague itinerary</h1>
+      <AddTask onAddTask={handleAddTask} />
+      <TaskList
+        tasks={tasks}
+        onChangeTask={handleChangeTask}
+        onDeleteTask={handleDeleteTask}
+      />
+    </>
+  );
+}
+
+function tasksReducer(tasks, action) {
+  switch (action.type) {
+    case 'added': {
+      return [
+        ...tasks,
+        {
+          id: action.id,
+          text: action.text,
+          done: false,
+        },
+      ];
+    }
+    case 'changed': {
+      return tasks.map((t) => {
+        if (t.id === action.task.id) {
+          return action.task;
+        } else {
+          return t;
+        }
+      });
+    }
+    case 'deleted': {
+      return tasks.filter((t) => t.id !== action.id);
+    }
+    default: {
+      throw Error('Unknown action: ' + action.type);
+    }
+  }
+}
+
+let nextId = 3;
+const initialTasks = [
+  {id: 0, text: 'Visit Kafka Museum', done: true},
+  {id: 1, text: 'Watch a puppet show', done: false},
+  {id: 2, text: 'Lennon Wall pic', done: false},
+];
+```
+
+```js tab="Tab 2"
+//AddTask.js hidden
+import { useState } from 'react';
+
+export default function AddTask({onAddTask}) {
+  const [text, setText] = useState('');
+  return (
+    <>
+      <input
+        placeholder="Add task"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <button
+        onClick={() => {
+          setText('');
+          onAddTask(text);
+        }}>
+        Add
+      </button>
+    </>
+  );
+}
+```
+
+```js tab="Tab 3"
+//TaskList.js hidden
+import { useState } from 'react';
+
+export default function TaskList({tasks, onChangeTask, onDeleteTask}) {
+  return (
+    <ul>
+      {tasks.map((task) => (
+        <li key={task.id}>
+          <Task task={task} onChange={onChangeTask} onDelete={onDeleteTask} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Task({task, onChange, onDelete}) {
+  const [isEditing, setIsEditing] = useState(false);
+  let taskContent;
+  if (isEditing) {
+    taskContent = (
+      <>
+        <input
+          value={task.text}
+          onChange={(e) => {
+            onChange({
+              ...task,
+              text: e.target.value,
+            });
+          }}
+        />
+        <button onClick={() => setIsEditing(false)}>Save</button>
+      </>
+    );
+  } else {
+    taskContent = (
+      <>
+        {task.text}
+        <button onClick={() => setIsEditing(true)}>Edit</button>
+      </>
+    );
+  }
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={task.done}
+        onChange={(e) => {
+          onChange({
+            ...task,
+            done: e.target.checked,
+          });
+        }}
+      />
+      {taskContent}
+      <button onClick={() => onDelete(task.id)}>Delete</button>
+    </label>
+  );
+}
+```
+
+```js tab="Tab 4"
+//css
+button {
+  margin: 5px;
+}
+li {
+  list-style-type: none;
+}
+ul,
+li {
+  margin: 0;
+  padding: 0;
+}
+```
+
+При желании вы можете даже вынести reducer в отдельный файл:
+
+```js tab="Tab 1"
+//App.js
+import { useReducer } from 'react';
+import AddTask from './AddTask.js';
+import TaskList from './TaskList.js';
+import tasksReducer from './tasksReducer.js';
+
+export default function TaskApp() {
+  const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
+
+  function handleAddTask(text) {
+    dispatch({
+      type: 'added',
+      id: nextId++,
+      text: text,
+    });
+  }
+
+  function handleChangeTask(task) {
+    dispatch({
+      type: 'changed',
+      task: task,
+    });
+  }
+
+  function handleDeleteTask(taskId) {
+    dispatch({
+      type: 'deleted',
+      id: taskId,
+    });
+  }
+
+  return (
+    <>
+      <h1>Prague itinerary</h1>
+      <AddTask onAddTask={handleAddTask} />
+      <TaskList
+        tasks={tasks}
+        onChangeTask={handleChangeTask}
+        onDeleteTask={handleDeleteTask}
+      />
+    </>
+  );
+}
+
+let nextId = 3;
+const initialTasks = [
+  {id: 0, text: 'Visit Kafka Museum', done: true},
+  {id: 1, text: 'Watch a puppet show', done: false},
+  {id: 2, text: 'Lennon Wall pic', done: false},
+];
+```
+
+```js tab="Tab 2"
+//tasksReducer.js
+export default function tasksReducer(tasks, action) {
+  switch (action.type) {
+    case 'added': {
+      return [
+        ...tasks,
+        {
+          id: action.id,
+          text: action.text,
+          done: false,
+        },
+      ];
+    }
+    case 'changed': {
+      return tasks.map((t) => {
+        if (t.id === action.task.id) {
+          return action.task;
+        } else {
+          return t;
+        }
+      });
+    }
+    case 'deleted': {
+      return tasks.filter((t) => t.id !== action.id);
+    }
+    default: {
+      throw Error('Unknown action: ' + action.type);
+    }
+  }
+}
+```
+
+```js tab="Tab 3"
+//AddTask.js hidden
+import { useState } from 'react';
+
+export default function AddTask({onAddTask}) {
+  const [text, setText] = useState('');
+  return (
+    <>
+      <input
+        placeholder="Add task"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <button
+        onClick={() => {
+          setText('');
+          onAddTask(text);
+        }}>
+        Add
+      </button>
+    </>
+  );
+}
+```
+
+```js tab="Tab 4"
+//TaskList.js hidden
+import { useState } from 'react';
+
+export default function TaskList({tasks, onChangeTask, onDeleteTask}) {
+  return (
+    <ul>
+      {tasks.map((task) => (
+        <li key={task.id}>
+          <Task task={task} onChange={onChangeTask} onDelete={onDeleteTask} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Task({task, onChange, onDelete}) {
+  const [isEditing, setIsEditing] = useState(false);
+  let taskContent;
+  if (isEditing) {
+    taskContent = (
+      <>
+        <input
+          value={task.text}
+          onChange={(e) => {
+            onChange({
+              ...task,
+              text: e.target.value,
+            });
+          }}
+        />
+        <button onClick={() => setIsEditing(false)}>Save</button>
+      </>
+    );
+  } else {
+    taskContent = (
+      <>
+        {task.text}
+        <button onClick={() => setIsEditing(true)}>Edit</button>
+      </>
+    );
+  }
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={task.done}
+        onChange={(e) => {
+          onChange({
+            ...task,
+            done: e.target.checked,
+          });
+        }}
+      />
+      {taskContent}
+      <button onClick={() => onDelete(task.id)}>Delete</button>
+    </label>
+  );
+}
+```
+
+```js tab="Tab 5"
+//css
+button {
+  margin: 5px;
+}
+li {
+  list-style-type: none;
+}
+ul,
+li {
+  margin: 0;
+  padding: 0;
+}
+```
+
+Такое разделение часто делает логику компонента легче для чтения. Теперь обработчики событий только указывают _что произошло_, отправляя actions, а функция reducer определяет, _как state обновится_ в ответ на них.
+
+## Сравнение `useState` и `useReducer` {/*comparing-usestate-and-usereducer*/}
+
+У reducers есть и минусы. Вот несколько способов сравнения:
+
+- **Размер кода:** Обычно с `useState` нужно писать меньше кода сразу. С `useReducer` нужно писать и функцию reducer, и отправку actions. Однако `useReducer` может сократить объём кода, если многие обработчики событий изменяют state похожим образом.
+- **Читаемость:** `useState` очень легко читать, когда обновления state простые. Когда они становятся сложнее, код компонента разрастается и его становится трудно быстро просмотреть. В этом случае `useReducer` позволяет чётко разделить _как_ работает логика обновления и _что произошло_ в обработчиках событий.
+- **Отладка:** При баге с `useState` бывает трудно понять, _где_ state был установлен неправильно и _почему_. С `useReducer` можно добавить `console.log` в reducer, чтобы увидеть каждое обновление state и _почему_ оно произошло (из-за какого `action`). Если каждый `action` верный, значит ошибка в самой логике reducer. Но при этом кода для проверки всё же больше, чем с `useState`.
+- **Тестирование:** Reducer — это чистая функция, не зависящая от компонента. Это значит, что её можно экспортировать и тестировать отдельно, изолированно. Хотя обычно лучше тестировать компоненты в более реалистичной среде, для сложной логики обновления state бывает полезно проверить, что reducer возвращает определённое состояние для заданных начального состояния и action.
+- **Личные предпочтения:** Кому-то нравятся reducers, кому-то — нет. Это нормально. Это вопрос предпочтения. Между `useState` и `useReducer` можно свободно переключаться туда и обратно: они эквивалентны!
+
+Мы рекомендуем использовать reducer, если вы часто сталкиваетесь с багами из-за неверных обновлений state в каком-то компоненте и хотите добавить в его код больше структуры. Не обязательно использовать reducers для всего: можно спокойно комбинировать разные подходы! В одном компоненте можно использовать и `useState`, и `useReducer`.
+
+## Как хорошо писать reducers {/*writing-reducers-well*/}
+
+При написании reducers держите в голове два совета:
+
+- **Reducers должны быть чистыми.** Как и [функции обновления state](/learn/queueing-a-series-of-state-updates), reducers выполняются во время рендера! (Actions ставятся в очередь до следующего рендера.) Это значит, что reducers [должны быть чистыми](/learn/keeping-components-pure) — одинаковые входные данные всегда должны давать одинаковый результат. Они не должны отправлять запросы, запускать таймеры или выполнять побочные эффекты (операции, влияющие на что-то вне компонента). Они должны обновлять [objects](/learn/updating-objects-in-state) и [arrays](/learn/updating-arrays-in-state) без мутаций.
+- **Каждый action описывает одно пользовательское взаимодействие, даже если оно приводит к нескольким изменениям данных.** Например, если пользователь нажимает "Reset" в форме с пятью полями, управляемыми reducer, имеет больше смысла отправить один action `reset_form`, чем пять отдельных actions `set_field`. Если логировать каждый action в reducer, этот лог должен быть достаточно понятным, чтобы по нему можно было восстановить, какие взаимодействия или ответы происходили и в каком порядке. Это помогает при отладке!
+
+## Пишем concise reducers с Immer {/*writing-concise-reducers-with-immer*/}
+
+Как и при [обновлении objects](/learn/updating-objects-in-state#write-concise-update-logic-with-immer) и [arrays](/learn/updating-arrays-in-state#write-concise-update-logic-with-immer) в обычном state, можно использовать библиотеку Immer, чтобы сделать reducers короче. Здесь [`useImmerReducer`](https://github.com/immerjs/use-immer#useimmerreducer) позволяет мутировать state через `push` или присваивание `arr[i] =`:
+
+```js tab="Tab 1"
+//App.js
+import { useImmerReducer } from 'use-immer';
+import AddTask from './AddTask.js';
+import TaskList from './TaskList.js';
+
+function tasksReducer(draft, action) {
+  switch (action.type) {
+    case 'added': {
+      draft.push({
+        id: action.id,
+        text: action.text,
+        done: false,
+      });
+      break;
+    }
+    case 'changed': {
+      const index = draft.findIndex((t) => t.id === action.task.id);
+      draft[index] = action.task;
+      break;
+    }
+    case 'deleted': {
+      return draft.filter((t) => t.id !== action.id);
+    }
+    default: {
+      throw Error('Unknown action: ' + action.type);
+    }
+  }
+}
+
+export default function TaskApp() {
+  const [tasks, dispatch] = useImmerReducer(tasksReducer, initialTasks);
+
+  function handleAddTask(text) {
+    dispatch({
+      type: 'added',
+      id: nextId++,
+      text: text,
+    });
+  }
+
+  function handleChangeTask(task) {
+    dispatch({
+      type: 'changed',
+      task: task,
+    });
+  }
+
+  function handleDeleteTask(taskId) {
+    dispatch({
+      type: 'deleted',
+      id: taskId,
+    });
+  }
+
+  return (
+    <>
+      <h1>Prague itinerary</h1>
+      <AddTask onAddTask={handleAddTask} />
+      <TaskList
+        tasks={tasks}
+        onChangeTask={handleChangeTask}
+        onDeleteTask={handleDeleteTask}
+      />
+    </>
+  );
+}
+
+let nextId = 3;
+const initialTasks = [
+  {id: 0, text: 'Visit Kafka Museum', done: true},
+  {id: 1, text: 'Watch a puppet show', done: false},
+  {id: 2, text: 'Lennon Wall pic', done: false},
+];
+```
+
+```js tab="Tab 2"
+//AddTask.js hidden
+import { useState } from 'react';
+
+export default function AddTask({onAddTask}) {
+  const [text, setText] = useState('');
+  return (
+    <>
+      <input
+        placeholder="Add task"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <button
+        onClick={() => {
+          setText('');
+          onAddTask(text);
+        }}>
+        Add
+      </button>
+    </>
+  );
+}
+```
+
+```js tab="Tab 3"
+//TaskList.js hidden
+import { useState } from 'react';
+
+export default function TaskList({tasks, onChangeTask, onDeleteTask}) {
+  return (
+    <ul>
+      {tasks.map((task) => (
+        <li key={task.id}>
+          <Task task={task} onChange={onChangeTask} onDelete={onDeleteTask} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Task({task, onChange, onDelete}) {
+  const [isEditing, setIsEditing] = useState(false);
+  let taskContent;
+  if (isEditing) {
+    taskContent = (
+      <>
+        <input
+          value={task.text}
+          onChange={(e) => {
+            onChange({
+              ...task,
+              text: e.target.value,
+            });
+          }}
+        />
+        <button onClick={() => setIsEditing(false)}>Save</button>
+      </>
+    );
+  } else {
+    taskContent = (
+      <>
+        {task.text}
+        <button onClick={() => setIsEditing(true)}>Edit</button>
+      </>
+    );
+  }
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={task.done}
+        onChange={(e) => {
+          onChange({
+            ...task,
+            done: e.target.checked,
+          });
+        }}
+      />
+      {taskContent}
+      <button onClick={() => onDelete(task.id)}>Delete</button>
+    </label>
+  );
+}
+```
+
+```js tab="Tab 4"
+button {
+  margin: 5px;
+}
+li {
+  list-style-type: none;
+}
+ul,
+li {
+  margin: 0;
+  padding: 0;
+}
+```
+
+```js tab="Tab 5"
+//json package.json
+{
+  "dependencies": {
+    "immer": "1.7.3",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-scripts": "latest",
+    "use-immer": "0.5.1"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  }
+}
+```
+
+Reducers должны быть чистыми, поэтому они не должны мутировать state. Но Immer даёт вам специальный объект `draft`, который безопасно мутировать. Внутри Immer создаст копию вашего state с теми изменениями, которые вы внесли в `draft`. Поэтому reducers, управляемые `useImmerReducer`, могут мутировать свой первый аргумент и не обязаны возвращать state.
+
+## Вывод
+
+- Чтобы перейти с `useState` на `useReducer`:
+  1. Отправляйте actions из обработчиков событий.
+  2. Напишите функцию reducer, которая возвращает следующее состояние для заданных state и action.
+  3. Замените `useState` на `useReducer`.
+- Reducers требуют чуть больше кода, но помогают с отладкой и тестированием.
+- Reducers должны быть чистыми.
+- Каждый action описывает одно пользовательское взаимодействие.
+- Используйте Immer, если хотите писать reducers в стиле мутаций.
