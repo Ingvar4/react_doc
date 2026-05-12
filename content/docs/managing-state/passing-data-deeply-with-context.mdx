@@ -1,0 +1,853 @@
+---
+title: Передача данных глубоко через Context
+description: Обычно информацию передают от родительского компонента к дочернему через props. Но передача props может стать громоздкой и неудобной, если их нужно прокидывать через множество промежуточных компонентов или если многим компонентам в приложении нужна одна и та же информация. *Context* позволяет родительскому компоненту сделать некоторую информацию доступной любому компоненту в дереве ниже него — на любой глубине — без явной передачи через props.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+
+- Что такое "prop drilling"
+- Как заменить повторяющуюся передачу props через context
+- Типичные сценарии использования context
+- Распространённые альтернативы context
+
+</Callout>
+
+## Проблема передачи props {/*the-problem-with-passing-props*/}
+
+[Передача props](/learn/passing-props-to-a-component) — отличный способ явно проталкивать данные через дерево UI к компонентам, которые их используют.
+
+Но передача props может стать громоздкой и неудобной, когда нужно передать некоторый prop глубоко по дереву или если многим компонентам нужен один и тот же prop. Ближайший общий предок может находиться далеко от компонентов, которым нужны данные, а [поднятие state вверх](/learn/sharing-state-between-components) так высоко может привести к ситуации, которая называется "prop drilling".
+
+<img src="/images/passing_data_lifting_state.webp" alt="1" style={{  height: '100px' }} />
+
+Поднятие state вверх
+
+<img src="/images/passing_data_prop_drilling.webp" alt="1" style={{  height: '200px' }} />
+
+Prop drilling
+
+Разве не было бы здорово, если бы существовал способ "телепортировать" данные к тем компонентам дерева, которым они нужны, без передачи props? В React для этого есть feature context!
+
+## Context: альтернатива передаче props {/*context-an-alternative-to-passing-props*/}
+
+Context позволяет родительскому компоненту предоставлять данные всему дереву ниже него. У context есть много вариантов использования. Вот один пример. Рассмотрим компонент `Heading`, который принимает `level`, определяющий его размер:
+
+```js tab="Tab 1"
+import Heading from './Heading.js';
+import Section from './Section.js';
+
+export default function Page() {
+  return (
+    <Section>
+      <Heading level={1}>Title</Heading>
+      <Heading level={2}>Heading</Heading>
+      <Heading level={3}>Sub-heading</Heading>
+      <Heading level={4}>Sub-sub-heading</Heading>
+      <Heading level={5}>Sub-sub-sub-heading</Heading>
+      <Heading level={6}>Sub-sub-sub-sub-heading</Heading>
+    </Section>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Section.js
+export default function Section({ children }) {
+  return (
+    <section className="section">
+      {children}
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//Heading.js
+export default function Heading({ level, children }) {
+  switch (level) {
+    case 1:
+      return <h1>{children}</h1>;
+    case 2:
+      return <h2>{children}</h2>;
+    case 3:
+      return <h3>{children}</h3>;
+    case 4:
+      return <h4>{children}</h4>;
+    case 5:
+      return <h5>{children}</h5>;
+    case 6:
+      return <h6>{children}</h6>;
+    default:
+      throw Error('Unknown level: ' + level);
+  }
+}
+```
+
+```js tab="Tab 4"
+```css
+.section {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+}
+```
+
+Допустим, вы хотите, чтобы несколько заголовков внутри одного `Section` всегда были одного и того же размера:
+
+```js tab="Tab 1"
+import Heading from './Heading.js';
+import Section from './Section.js';
+
+export default function Page() {
+  return (
+    <Section>
+      <Heading level={1}>Title</Heading>
+      <Section>
+        <Heading level={2}>Heading</Heading>
+        <Heading level={2}>Heading</Heading>
+        <Heading level={2}>Heading</Heading>
+        <Section>
+          <Heading level={3}>Sub-heading</Heading>
+          <Heading level={3}>Sub-heading</Heading>
+          <Heading level={3}>Sub-heading</Heading>
+          <Section>
+            <Heading level={4}>Sub-sub-heading</Heading>
+            <Heading level={4}>Sub-sub-heading</Heading>
+            <Heading level={4}>Sub-sub-heading</Heading>
+          </Section>
+        </Section>
+      </Section>
+    </Section>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Section.js
+export default function Section({ children }) {
+  return (
+    <section className="section">
+      {children}
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//Heading.js
+export default function Heading({ level, children }) {
+  switch (level) {
+    case 1:
+      return <h1>{children}</h1>;
+    case 2:
+      return <h2>{children}</h2>;
+    case 3:
+      return <h3>{children}</h3>;
+    case 4:
+      return <h4>{children}</h4>;
+    case 5:
+      return <h5>{children}</h5>;
+    case 6:
+      return <h6>{children}</h6>;
+    default:
+      throw Error('Unknown level: ' + level);
+  }
+}
+```
+
+```js tab="Tab 4"
+
+.section {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+}
+```
+
+Сейчас вы передаёте prop `level` каждому `<Heading>` отдельно:
+
+```js
+<Section>
+  <Heading level={3}>About</Heading>
+  <Heading level={3}>Photos</Heading>
+  <Heading level={3}>Videos</Heading>
+</Section>
+```
+
+Было бы удобно передавать prop `level` в компонент `<Section>`, а из `<Heading>` его убрать. Тогда можно было бы гарантировать, что все заголовки внутри одного раздела будут одного размера:
+
+```js
+<Section level={3}>
+  <Heading>About</Heading>
+  <Heading>Photos</Heading>
+  <Heading>Videos</Heading>
+</Section>
+```
+
+Но как компонент `<Heading>` узнает уровень своего ближайшего `<Section>`? **Для этого нужен способ, позволяющий дочернему компоненту "запросить" данные где-то выше в дереве.**
+
+Одними props здесь не обойтись. И вот тут вступает в игру context. Вы сделаете это в три шага:
+
+1. **Создайте** context. (Можно назвать его `LevelContext`, потому что он отвечает за уровень заголовка.)
+2. **Используйте** этот context в компоненте, которому нужны данные. (`Heading` будет использовать `LevelContext`.)
+3. **Предоставьте** этот context из компонента, который задаёт данные. (`Section` будет предоставлять `LevelContext`.)
+
+Context позволяет родителю — даже далёкому — передать данные всему дереву внутри него.
+
+<img src="/images/passing_data_context_close.webp" alt="1" style={{  height: 'auto' }} />
+
+Использование context в близких дочерних компонентах
+
+<img src="/images/passing_data_context_far.webp" alt="1" style={{  height: 'auto' }} />
+
+Использование context в удалённых дочерних компонентах
+
+### Шаг 1: Создайте context {/*step-1-create-the-context*/}
+
+Сначала нужно создать context. Его нужно **экспортировать из файла**, чтобы компоненты могли его использовать:
+
+```js tab="Tab 1"
+import Heading from './Heading.js';
+import Section from './Section.js';
+
+export default function Page() {
+  return (
+    <Section>
+      <Heading level={1}>Title</Heading>
+      <Section>
+        <Heading level={2}>Heading</Heading>
+        <Heading level={2}>Heading</Heading>
+        <Heading level={2}>Heading</Heading>
+        <Section>
+          <Heading level={3}>Sub-heading</Heading>
+          <Heading level={3}>Sub-heading</Heading>
+          <Heading level={3}>Sub-heading</Heading>
+          <Section>
+            <Heading level={4}>Sub-sub-heading</Heading>
+            <Heading level={4}>Sub-sub-heading</Heading>
+            <Heading level={4}>Sub-sub-heading</Heading>
+          </Section>
+        </Section>
+      </Section>
+    </Section>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Section.js
+export default function Section({ children }) {
+  return (
+    <section className="section">
+      {children}
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//Heading.js
+export default function Heading({ level, children }) {
+  switch (level) {
+    case 1:
+      return <h1>{children}</h1>;
+    case 2:
+      return <h2>{children}</h2>;
+    case 3:
+      return <h3>{children}</h3>;
+    case 4:
+      return <h4>{children}</h4>;
+    case 5:
+      return <h5>{children}</h5>;
+    case 6:
+      return <h6>{children}</h6>;
+    default:
+      throw Error('Unknown level: ' + level);
+  }
+}
+```
+
+```js tab="Tab 4"
+//LevelContext.js active
+import { createContext } from 'react';
+
+export const LevelContext = createContext(1);
+```
+
+```js tab="Tab 5"
+```css
+.section {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+}
+```
+
+Единственный аргумент `createContext` — это значение по умолчанию. Здесь `1` относится к самому крупному уровню заголовка, но можно передать любое значение (даже объект). Значение по умолчанию станет важным на следующем шаге.
+
+### Шаг 2: Используйте context {/*step-2-use-the-context*/}
+
+Импортируйте Hook `useContext` из React и ваш context:
+
+```js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+```
+
+Сейчас компонент `Heading` читает `level` из props:
+
+```js
+export default function Heading({ level, children }) {
+  // ...
+}
+```
+
+Теперь уберите prop `level` и прочитайте значение из только что импортированного context `LevelContext`:
+
+```js 
+export default function Heading({ children }) {
+  const level = useContext(LevelContext);
+  // ...
+}
+```
+
+`useContext` — это Hook. Как и `useState` и `useReducer`, Hook можно вызывать только непосредственно внутри React-компонента (не внутри циклов и условий). **`useContext` сообщает React, что компонент `Heading` хочет читать `LevelContext`.**
+
+Теперь, когда у компонента `Heading` больше нет prop `level`, вам больше не нужно передавать level в `Heading` в JSX вот так:
+
+```js
+<Section>
+  <Heading level={4}>Sub-sub-heading</Heading>
+  <Heading level={4}>Sub-sub-heading</Heading>
+  <Heading level={4}>Sub-sub-heading</Heading>
+</Section>
+```
+
+Обновите JSX так, чтобы это получал `Section`:
+
+```jsx
+<Section level={4}>
+  <Heading>Sub-sub-heading</Heading>
+  <Heading>Sub-sub-heading</Heading>
+  <Heading>Sub-sub-heading</Heading>
+</Section>
+```
+
+Напоминаем, вот тот markup, который вы пытались заставить работать:
+
+```js tab="Tab 1"
+import Heading from './Heading.js';
+import Section from './Section.js';
+
+export default function Page() {
+  return (
+    <Section level={1}>
+      <Heading>Title</Heading>
+      <Section level={2}>
+        <Heading>Heading</Heading>
+        <Heading>Heading</Heading>
+        <Heading>Heading</Heading>
+        <Section level={3}>
+          <Heading>Sub-heading</Heading>
+          <Heading>Sub-heading</Heading>
+          <Heading>Sub-heading</Heading>
+          <Section level={4}>
+            <Heading>Sub-sub-heading</Heading>
+            <Heading>Sub-sub-heading</Heading>
+            <Heading>Sub-sub-heading</Heading>
+          </Section>
+        </Section>
+      </Section>
+    </Section>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Section.js
+export default function Section({ children }) {
+  return (
+    <section className="section">
+      {children}
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//Heading.js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Heading({ children }) {
+  const level = useContext(LevelContext);
+  switch (level) {
+    case 1:
+      return <h1>{children}</h1>;
+    case 2:
+      return <h2>{children}</h2>;
+    case 3:
+      return <h3>{children}</h3>;
+    case 4:
+      return <h4>{children}</h4>;
+    case 5:
+      return <h5>{children}</h5>;
+    case 6:
+      return <h6>{children}</h6>;
+    default:
+      throw Error('Unknown level: ' + level);
+  }
+}
+```
+
+```js tab="Tab 4"
+//LevelContext.js
+import { createContext } from 'react';
+
+export const LevelContext = createContext(1);
+```
+
+```js tab="Tab 5"
+
+.section {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+}
+```
+
+Заметьте, что этот пример пока ещё не совсем работает! Все заголовки одного размера, потому что **хотя вы *используете* context, вы ещё не *предоставляете* его.** React не знает, откуда его взять!
+
+Если не предоставить context, React использует значение по умолчанию, указанное на предыдущем шаге. В этом примере вы передали `1` в `createContext`, поэтому `useContext(LevelContext)` возвращает `1`, и все заголовки становятся `<h1>`. Давайте исправим это, сделав так, чтобы каждый `Section` предоставлял свой context.
+
+### Шаг 3: Предоставьте context {/*step-3-provide-the-context*/}
+
+Сейчас компонент `Section` просто рендерит своих дочерних элементов:
+
+```js
+export default function Section({ children }) {
+  return (
+    <section className="section">
+      {children}
+    </section>
+  );
+}
+```
+
+**Оберните их в provider context**, чтобы передать им `LevelContext`:
+
+```js {1,6,8}
+import { LevelContext } from './LevelContext.js';
+
+export default function Section({ level, children }) {
+  return (
+    <section className="section">
+      <LevelContext value={level}>
+        {children}
+      </LevelContext>
+    </section>
+  );
+}
+```
+
+Это сообщает React: "если любой компонент внутри этого `<Section>` запросит `LevelContext`, дай ему этот `level`". Компонент будет использовать значение ближайшего `<LevelContext>` выше него в дереве UI.
+
+```js tab="Tab 1"
+import Heading from './Heading.js';
+import Section from './Section.js';
+
+export default function Page() {
+  return (
+    <Section level={1}>
+      <Heading>Title</Heading>
+      <Section level={2}>
+        <Heading>Heading</Heading>
+        <Heading>Heading</Heading>
+        <Heading>Heading</Heading>
+        <Section level={3}>
+          <Heading>Sub-heading</Heading>
+          <Heading>Sub-heading</Heading>
+          <Heading>Sub-heading</Heading>
+          <Section level={4}>
+            <Heading>Sub-sub-heading</Heading>
+            <Heading>Sub-sub-heading</Heading>
+            <Heading>Sub-sub-heading</Heading>
+          </Section>
+        </Section>
+      </Section>
+    </Section>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Section.js
+import { LevelContext } from './LevelContext.js';
+
+export default function Section({ level, children }) {
+  return (
+    <section className="section">
+      <LevelContext value={level}>
+        {children}
+      </LevelContext>
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//Heading.js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Heading({ children }) {
+  const level = useContext(LevelContext);
+  switch (level) {
+    case 1:
+      return <h1>{children}</h1>;
+    case 2:
+      return <h2>{children}</h2>;
+    case 3:
+      return <h3>{children}</h3>;
+    case 4:
+      return <h4>{children}</h4>;
+    case 5:
+      return <h5>{children}</h5>;
+    case 6:
+      return <h6>{children}</h6>;
+    default:
+      throw Error('Unknown level: ' + level);
+  }
+}
+```
+
+```js tab="Tab 4"
+//LevelContext.js
+import { createContext } from 'react';
+
+export const LevelContext = createContext(1);
+```
+
+```js tab="Tab 5"
+
+.section {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+}
+```
+
+Это тот же результат, что и в исходном коде, но вам не нужно было передавать prop `level` каждому компоненту `Heading`! Вместо этого он сам "понимает" свой уровень заголовка, обращаясь к ближайшему `Section` выше:
+
+1. Вы передаёте prop `level` в `<Section>`.
+2. `Section` оборачивает своих детей в `<LevelContext value={level}>`.
+3. `Heading` запрашивает ближайшее значение `LevelContext` выше с помощью `useContext(LevelContext)`.
+
+## Использование и предоставление context в одном и том же компоненте {/*using-and-providing-context-from-the-same-component*/}
+
+Сейчас вам всё ещё приходится задавать уровень каждого раздела вручную:
+
+```js
+export default function Page() {
+  return (
+    <Section level={1}>
+      ...
+      <Section level={2}>
+        ...
+        <Section level={3}>
+          ...
+```
+
+Поскольку context позволяет читать информацию из компонента выше, каждый `Section` мог бы читать `level` из `Section` выше и автоматически передавать вниз `level + 1`. Вот как это можно сделать:
+
+```js src/Section.js {5,8}
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Section({ children }) {
+  const level = useContext(LevelContext);
+  return (
+    <section className="section">
+      <LevelContext value={level + 1}>
+        {children}
+      </LevelContext>
+    </section>
+  );
+}
+```
+
+После этого вам не нужно передавать prop `level` ни в `<Section>`, ни в `<Heading>`:
+
+```js tab="Tab 1"
+import Heading from './Heading.js';
+import Section from './Section.js';
+
+export default function Page() {
+  return (
+    <Section>
+      <Heading>Title</Heading>
+      <Section>
+        <Heading>Heading</Heading>
+        <Heading>Heading</Heading>
+        <Heading>Heading</Heading>
+        <Section>
+          <Heading>Sub-heading</Heading>
+          <Heading>Sub-heading</Heading>
+          <Heading>Sub-heading</Heading>
+          <Section>
+            <Heading>Sub-sub-heading</Heading>
+            <Heading>Sub-sub-heading</Heading>
+            <Heading>Sub-sub-heading</Heading>
+          </Section>
+        </Section>
+      </Section>
+    </Section>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Section.js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Section({ children }) {
+  const level = useContext(LevelContext);
+  return (
+    <section className="section">
+      <LevelContext value={level + 1}>
+        {children}
+      </LevelContext>
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//Heading.js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Heading({ children }) {
+  const level = useContext(LevelContext);
+  switch (level) {
+    case 0:
+      throw Error('Heading must be inside a Section!');
+    case 1:
+      return <h1>{children}</h1>;
+    case 2:
+      return <h2>{children}</h2>;
+    case 3:
+      return <h3>{children}</h3>;
+    case 4:
+      return <h4>{children}</h4>;
+    case 5:
+      return <h5>{children}</h5>;
+    case 6:
+      return <h6>{children}</h6>;
+    default:
+      throw Error('Unknown level: ' + level);
+  }
+}
+```
+
+```js tab="Tab 4"
+//LevelContext.js
+import { createContext } from 'react';
+
+export const LevelContext = createContext(0);
+```
+
+```js tab="Tab 5"
+
+.section {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+}
+```
+
+Теперь и `Heading`, и `Section` читают `LevelContext`, чтобы понять, насколько они "глубоко" находятся. А `Section` оборачивает своих детей в `LevelContext`, чтобы указать, что всё внутри него находится на "более глубоком" уровне.
+
+<Callout>
+
+В этом примере используются уровни заголовков, потому что они наглядно показывают, как вложенные компоненты могут переопределять context. Но context полезен и во многих других сценариях. Через него можно передавать любую информацию, нужную всему поддереву: текущую тему оформления, текущего вошедшего пользователя и так далее.
+
+</Callout>
+
+## Context проходит через промежуточные компоненты {/*context-passes-through-intermediate-components*/}
+
+Вы можете вставить между компонентом, который предоставляет context, и компонентом, который его использует, сколько угодно промежуточных компонентов. Сюда входят как встроенные компоненты вроде `<div>`, так и ваши собственные компоненты.
+
+В этом примере один и тот же компонент `Post` (с пунктирной рамкой) рендерится на двух разных уровнях вложенности. Обратите внимание, что `<Heading>` внутри него автоматически получает свой уровень от ближайшего `<Section>`:
+
+```js tab="Tab 1"
+import Heading from './Heading.js';
+import Section from './Section.js';
+
+export default function ProfilePage() {
+  return (
+    <Section>
+      <Heading>My Profile</Heading>
+      <Post
+        title="Hello traveller!"
+        body="Read about my adventures."
+      />
+      <AllPosts />
+    </Section>
+  );
+}
+
+function AllPosts() {
+  return (
+    <Section>
+      <Heading>Posts</Heading>
+      <RecentPosts />
+    </Section>
+  );
+}
+
+function RecentPosts() {
+  return (
+    <Section>
+      <Heading>Recent Posts</Heading>
+      <Post
+        title="Flavors of Lisbon"
+        body="...those pastéis de nata!"
+      />
+      <Post
+        title="Buenos Aires in the rhythm of tango"
+        body="I loved it!"
+      />
+    </Section>
+  );
+}
+
+function Post({ title, body }) {
+  return (
+    <Section isFancy={true}>
+      <Heading>
+        {title}
+      </Heading>
+      <p><i>{body}</i></p>
+    </Section>
+  );
+}
+```
+
+```js tab="Tab 2"
+//Section.js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Section({ children, isFancy }) {
+  const level = useContext(LevelContext);
+  return (
+    <section className={
+      'section ' +
+      (isFancy ? 'fancy' : '')
+    }>
+      <LevelContext value={level + 1}>
+        {children}
+      </LevelContext>
+    </section>
+  );
+}
+```
+
+```js tab="Tab 3"
+//Heading.js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Heading({ children }) {
+  const level = useContext(LevelContext);
+  switch (level) {
+    case 0:
+      throw Error('Heading must be inside a Section!');
+    case 1:
+      return <h1>{children}</h1>;
+    case 2:
+      return <h2>{children}</h2>;
+    case 3:
+      return <h3>{children}</h3>;
+    case 4:
+      return <h4>{children}</h4>;
+    case 5:
+      return <h5>{children}</h5>;
+    case 6:
+      return <h6>{children}</h6>;
+    default:
+      throw Error('Unknown level: ' + level);
+  }
+}
+```
+
+```js tab="Tab 4"
+//LevelContext.js
+import { createContext } from 'react';
+
+export const LevelContext = createContext(0);
+```
+
+```js tab="Tab 5"
+
+.section {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+}
+
+.fancy {
+  border: 4px dashed pink;
+}
+```
+
+Для этого не потребовалось ничего особенного. `Section` задаёт context для дерева внутри себя, поэтому вы можете вставить `<Heading>` где угодно, и он получит правильный размер. Попробуйте это в песочнице выше!
+
+**Context позволяет писать компоненты, которые "подстраиваются под окружение" и отображаются по-разному в зависимости от того, _где_ (или, другими словами, _в каком context_) они рендерятся.**
+
+То, как работает context, может напомнить вам [наследование CSS-свойств.](https://developer.mozilla.org/en-US/docs/Web/CSS/inheritance) В CSS можно задать `color: blue` для `<div>`, и любой DOM-узел внутри него, на любой глубине, унаследует этот цвет, если только какой-то другой DOM-узел посередине не переопределит его с помощью `color: green`. Аналогично, в React единственный способ переопределить context, пришедший сверху, — это обернуть детей в provider context с другим значением.
+
+В CSS разные свойства, такие как `color` и `background-color`, не переопределяют друг друга. Можно сделать `color` всех `<div>` красным, не затрагивая `background-color`. Аналогично, **разные context в React не переопределяют друг друга.** Каждый context, созданный с помощью `createContext()`, полностью отделён от остальных и связывает компоненты, которые используют и предоставляют *именно этот* context. Один компонент может использовать или предоставлять много разных context без проблем.
+
+## Прежде чем использовать context {/*before-you-use-context*/}
+
+Context очень соблазнительно использовать! Но это также означает, что им легко злоупотребить. **То, что нужно передать некоторые props через несколько уровней вложенности, ещё не значит, что эту информацию следует помещать в context.**
+
+Вот несколько альтернатив, которые стоит рассмотреть перед использованием context:
+
+1. **Сначала попробуйте [передавать props.](/learn/passing-props-to-a-component)** Если ваши компоненты не совсем тривиальны, нет ничего необычного в том, чтобы передавать десяток props через десяток компонентов. Это может казаться утомительным, но зато сразу видно, какие компоненты используют какие данные! Человеку, который будет поддерживать ваш код, будет проще, потому что поток данных через props у вас явный.
+2. **Выделяйте компоненты и [передавайте JSX как `children`](/learn/passing-props-to-a-component#passing-jsx-as-children) в них.** Если вы передаёте какие-то данные через много промежуточных компонентов, которые сами эти данные не используют (а только передают дальше), это часто означает, что вы забыли выделить некоторые компоненты по пути. Например, вы можете передавать data props вроде `posts` в визуальные компоненты, которые не используют их напрямую, например `<Layout posts={posts} />`. Вместо этого сделайте так, чтобы `Layout` принимал `children` как prop, и рендерите `<Layout><Posts posts={posts} /></Layout>`. Это уменьшает количество уровней между компонентом, который задаёт данные, и компонентом, которому они нужны.
+
+Если ни один из этих подходов вам не подходит, тогда уже стоит рассмотреть context.
+
+## Сценарии использования context {/*use-cases-for-context*/}
+
+* **Темизация:** Если ваше приложение позволяет пользователю менять внешний вид (например, dark mode), можно разместить provider context в верхней части приложения и использовать этот context в компонентах, которым нужно подстроить свой внешний вид.
+* **Текущая учётная запись:** Многим компонентам может понадобиться знать, какой пользователь сейчас вошёл в систему. Если поместить это в context, данные удобно читать в любой точке дерева. Некоторые приложения также позволяют одновременно работать с несколькими учётными записями (например, оставить комментарий от другого пользователя). В таких случаях удобно обернуть часть UI в вложенный provider с другим значением текущей учётной записи.
+* **Маршрутизация:** Большинство решений для routing используют context внутри себя, чтобы хранить текущий маршрут. Именно так каждая ссылка "знает", активна она или нет. Если вы делаете свой router, возможно, стоит поступить так же.
+* **Управление state:** По мере роста приложения у вас может появиться много state ближе к его верхнему уровню. Многим удалённым компонентам ниже по дереву может понадобиться менять его. Часто [используют reducer вместе с context](/learn/scaling-up-with-reducer-and-context), чтобы управлять сложным state и передавать его удалённым компонентам без лишних сложностей.
+
+Context не ограничен статическими значениями. Если при следующем рендере передать другое значение, React обновит все компоненты ниже, которые его читают! Именно поэтому context часто используют вместе с state.
+
+В целом, если какая-то информация нужна удалённым компонентам в разных частях дерева, это хороший признак того, что context поможет.
+
+## Вывод
+
+* Context позволяет компоненту передать некоторую информацию всему дереву ниже него.
+* Чтобы передать context:
+  1. Создайте и экспортируйте его с помощью `export const MyContext = createContext(defaultValue)`.
+  2. Передайте его в Hook `useContext(MyContext)`, чтобы читать его в любом дочернем компоненте, на любой глубине.
+  3. Оберните детей в `<MyContext value={...}>`, чтобы предоставить его из родителя.
+* Context проходит через любые промежуточные компоненты.
+* Context позволяет писать компоненты, которые "подстраиваются под окружение".
+* Прежде чем использовать context, попробуйте передавать props или передавать JSX как `children`.
