@@ -1,0 +1,760 @@
+---
+title: Escape Hatches
+description: Некоторым вашим компонентам может понадобиться управлять системами вне React и синхронизироваться с ними. Например, вам может понадобиться установить фокус на input с помощью browser API, запускать и ставить на паузу видеоплеер, реализованный без React, или подключаться к удалённому серверу и слушать сообщения от него. В этой главе вы познакомитесь с escape hatches, которые позволяют "выйти" за пределы React и подключаться к внешним системам. Большая часть логики приложения и потоков данных не должна опираться на эти возможности.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+
+* [Как "запоминать" информацию без повторного рендера](/learn/referencing-values-with-refs)
+* [Как получать доступ к DOM-элементам, которыми управляет React](/learn/manipulating-the-dom-with-refs)
+* [Как синхронизировать компоненты с внешними системами](/learn/synchronizing-with-effects)
+* [Как удалить ненужные Effects из компонентов](/learn/you-might-not-need-an-effect)
+* [Чем lifecycle Effect отличается от lifecycle компонента](/learn/lifecycle-of-reactive-effects)
+* [Как не дать некоторым значениям повторно запускать Effects](/learn/separating-events-from-effects)
+* [Как сделать так, чтобы Effect запускался реже](/learn/removing-effect-dependencies)
+* [Как делиться логикой между компонентами](/learn/reusing-logic-with-custom-hooks)
+
+</Callout>
+
+## Хранение значений с помощью ref {/*referencing-values-with-refs*/}
+
+Когда вам нужно, чтобы компонент "помнил" какую-то информацию, но вы не хотите, чтобы эта информация [запускала новые рендеры](/learn/render-and-commit), вы можете использовать *ref*:
+
+```js
+const ref = useRef(0);
+```
+
+Как и state, refs сохраняются React между повторными рендерами. Но если менять state, компонент рендерится заново. Если менять ref, этого не происходит! Получить текущее значение ref можно через свойство `ref.current`.
+
+<Sandpack code={
+`import { useRef } from 'react';
+
+  export default function Counter() {
+    let ref = useRef(0);
+
+    function handleClick() {
+      ref.current = ref.current + 1;
+      alert('You clicked ' + ref.current + ' times!');
+    }
+
+    return (
+      <button onClick={handleClick}>
+        Click me!
+      </button>
+    );
+  }`}
+/>
+
+ref — это как секретный карман вашего компонента, за которым React не следит. Например, refs можно использовать для хранения [ID тайм-аутов](https://developer.mozilla.org/en-US/docs/Web/API/setTimeout#return_value), [DOM-элементов](https://developer.mozilla.org/en-US/docs/Web/API/Element) и других объектов, которые не влияют на результат рендера компонента.
+
+## Работа с DOM через refs {/*manipulating-the-dom-with-refs*/}
+
+React автоматически обновляет DOM так, чтобы он соответствовал результату рендера, поэтому вашим компонентам обычно не нужно управлять им вручную. Но иногда вам может понадобиться доступ к DOM-элементам, которыми управляет React, — например, чтобы установить фокус на узел, прокрутить к нему или измерить его размер и положение. В React нет встроенного способа делать это, поэтому вам понадобится ref на DOM-узел. Например, нажатие кнопки переведёт фокус на input с помощью ref:
+
+<Sandpack code={
+`import { useRef } from 'react';
+
+  export default function Form() {
+    const inputRef = useRef(null);
+
+    function handleClick() {
+      inputRef.current.focus();
+    }
+
+    return (
+      <>
+        <input ref={inputRef} />
+        <button onClick={handleClick}>
+          Focus the input
+        </button>
+      </>
+    );
+  }`}
+/>
+
+## Синхронизация с Effects {/*synchronizing-with-effects*/}
+
+Некоторым компонентам нужно синхронизироваться с внешними системами. Например, вы можете захотеть управлять не-React компонентом на основе state React, настроить соединение с сервером или отправить аналитический лог, когда компонент появляется на экране. В отличие от event handlers, которые позволяют обрабатывать конкретные события, *Effects* позволяют запускать код после рендера. Используйте их, чтобы синхронизировать ваш компонент с системой вне React.
+
+Нажмите Play/Pause несколько раз и посмотрите, как видеоплеер остаётся синхронизированным со значением пропса `isPlaying`:
+
+<Sandpack code={
+`import { useState, useRef, useEffect } from 'react';
+
+  function VideoPlayer({ src, isPlaying }) {
+    const ref = useRef(null);
+
+    useEffect(() => {
+      if (isPlaying) {
+        ref.current.play();
+      } else {
+        ref.current.pause();
+      }
+    }, [isPlaying]);
+
+    return <video ref={ref} src={src} loop playsInline />;
+  }
+
+  export default function App() {
+    const [isPlaying, setIsPlaying] = useState(false);
+    return (
+      <>
+        <button onClick={() => setIsPlaying(!isPlaying)}>
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <VideoPlayer
+          isPlaying={isPlaying}
+          src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+        />
+      </>
+    );
+  }`}
+/>
+
+Многие Effects также "убирают за собой". Например, Effect, который устанавливает соединение с chat server, должен вернуть *cleanup function*, сообщающую React, как отключить ваш компонент от этого сервера:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+export default function ChatRoom() {
+  useEffect(() => {
+    const connection = createConnection();
+    connection.connect();
+    return () => connection.disconnect();
+  }, []);
+  return <h1>Welcome to the chat!</h1>;
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection() {
+  // A real implementation would actually connect to the server
+  return {
+    connect() {
+      console.log('✅ Connecting...');
+    },
+    disconnect() {
+      console.log('❌ Disconnected.');
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+
+input { display: block; margin-bottom: 20px; }
+```
+
+В development React сразу один дополнительный раз запустит и затем очистит ваш Effect. Именно поэтому вы видите строку `"✅ Connecting..."` дважды. Это гарантирует, что вы не забудете реализовать cleanup function.
+
+## Вам может не понадобиться Effect {/*you-might-not-need-an-effect*/}
+
+Effects — это escape hatch из парадигмы React. Они позволяют "выйти" за пределы React и синхронизировать ваши компоненты с внешней системой. Если внешней системы нет (например, если вы хотите обновить state компонента при изменении props или state), вам, скорее всего, не нужен Effect. Удаление ненужных Effects сделает код проще для понимания, быстрее в работе и менее подверженным ошибкам.
+
+Есть два распространённых случая, когда Effects не нужны:
+- **Вам не нужны Effects для преобразования данных для рендера.**
+- **Вам не нужны Effects для обработки пользовательских событий.**
+
+Например, вам не нужен Effect, чтобы изменять один state на основе другого:
+
+```js {expectedErrors: {'react-compiler': [8]}} {5-9}
+function Form() {
+  const [firstName, setFirstName] = useState('Taylor');
+  const [lastName, setLastName] = useState('Swift');
+
+  // 🔴 Avoid: redundant state and unnecessary Effect
+  const [fullName, setFullName] = useState('');
+  useEffect(() => {
+    setFullName(firstName + ' ' + lastName);
+  }, [firstName, lastName]);
+  // ...
+}
+```
+
+Вместо этого вычисляйте как можно больше прямо во время рендера:
+
+```js {4-5}
+function Form() {
+  const [firstName, setFirstName] = useState('Taylor');
+  const [lastName, setLastName] = useState('Swift');
+  // ✅ Good: calculated during rendering
+  const fullName = firstName + ' ' + lastName;
+  // ...
+}
+```
+
+Но вам *действительно* нужны Effects, чтобы синхронизироваться с внешними системами.
+
+## Жизненный цикл reactive Effects {/*lifecycle-of-reactive-effects*/}
+
+Effects живут по другому жизненному циклу, чем компоненты. Компоненты могут монтироваться, обновляться или размонтироваться. Effect может делать только две вещи: запускать синхронизацию чего-то, а потом останавливать её. Этот цикл может происходить много раз, если ваш Effect зависит от props и state, которые меняются со временем.
+
+Этот Effect зависит от значения пропса `roomId`. Props — это *reactive values*, то есть они могут изменяться при повторном рендере. Обратите внимание: если `roomId` меняется, Effect *повторно синхронизируется* (и заново подключается к серверу):
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+
+  return <h1>Welcome to the {roomId} room!</h1>;
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  return (
+    <>
+      <label>
+        Choose the chat room:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <hr />
+      <ChatRoom roomId={roomId} />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection(serverUrl, roomId) {
+  // A real implementation would actually connect to the server
+  return {
+    connect() {
+      console.log('✅ Connecting to "' + roomId + '" room at ' + serverUrl + '...');
+    },
+    disconnect() {
+      console.log('❌ Disconnected from "' + roomId + '" room at ' + serverUrl);
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+
+input { display: block; margin-bottom: 20px; }
+button { margin-left: 10px; }
+```
+
+React предоставляет правило линтера, которое проверяет, правильно ли вы указали зависимости Effect. Если вы забудете добавить `roomId` в список зависимостей в примере выше, линтер автоматически найдёт эту ошибку.
+
+## Разделение событий и Effects {/*separating-events-from-effects*/}
+
+Event handlers запускаются только когда вы повторяете одно и то же взаимодействие. В отличие от них, Effects повторно синхронизируются, если какое-либо из читаемых ими значений, например props или state, отличается от значения при предыдущем рендере. Иногда вам нужен смешанный вариант: Effect, который запускается повторно в ответ на одни значения, но не на другие.
+
+Весь код внутри Effects *реактивен*. Он запустится снова, если какое-то реактивное значение, которое он читает, изменилось из-за повторного рендера. Например, этот Effect заново подключится к чату, если изменится либо `roomId`, либо `theme`:
+
+```js tab="Tab 1"
+{
+  "dependencies": {
+    "react": "latest",
+    "react-dom": "latest",
+    "react-scripts": "latest",
+    "toastify-js": "1.12.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  }
+}
+```
+
+```js tab="Tab 2"
+
+import { useState, useEffect } from 'react';
+import { createConnection, sendMessage } from './chat.js';
+import { showNotification } from './notifications.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId, theme }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.on('connected', () => {
+      showNotification('Connected!', theme);
+    });
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId, theme]);
+
+  return <h1>Welcome to the {roomId} room!</h1>
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  const [isDark, setIsDark] = useState(false);
+  return (
+    <>
+      <label>
+        Choose the chat room:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={isDark}
+          onChange={e => setIsDark(e.target.checked)}
+        />
+        Use dark theme
+      </label>
+      <hr />
+      <ChatRoom
+        roomId={roomId}
+        theme={isDark ? 'dark' : 'light'}
+      />
+    </>
+  );
+}
+```
+
+```js tab="Tab 3"
+//chat.js
+export function createConnection(serverUrl, roomId) {
+  // A real implementation would actually connect to the server
+  let connectedCallback;
+  let timeout;
+  return {
+    connect() {
+      timeout = setTimeout(() => {
+        if (connectedCallback) {
+          connectedCallback();
+        }
+      }, 100);
+    },
+    on(event, callback) {
+      if (connectedCallback) {
+        throw Error('Cannot add the handler twice.');
+      }
+      if (event !== 'connected') {
+        throw Error('Only "connected" event is supported.');
+      }
+      connectedCallback = callback;
+    },
+    disconnect() {
+      clearTimeout(timeout);
+    }
+  };
+}
+```
+
+```js tab="Tab 4"
+//notifications.js
+import Toastify from 'toastify-js';
+import 'toastify-js/src/toastify.css';
+
+export function showNotification(message, theme) {
+  Toastify({
+    text: message,
+    duration: 2000,
+    gravity: 'top',
+    position: 'right',
+    style: {
+      background: theme === 'dark' ? 'black' : 'white',
+      color: theme === 'dark' ? 'white' : 'black',
+    },
+  }).showToast();
+}
+```
+
+```js tab="Tab 5"
+
+label { display: block; margin-top: 10px; }
+```
+
+Это не идеально. Вам нужно повторно подключаться к чату только если изменился `roomId`. Переключение `theme` не должно вызывать повторное подключение! Вынесите чтение `theme` из Effect в *Effect Event*:
+
+```js tab="Tab 1"
+{
+  "dependencies": {
+    "react": "latest",
+    "react-dom": "latest",
+    "react-scripts": "latest",
+    "toastify-js": "1.12.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  }
+}
+```
+
+```js tab="Tab 2"
+
+import { useState, useEffect } from 'react';
+import { useEffectEvent } from 'react';
+import { createConnection, sendMessage } from './chat.js';
+import { showNotification } from './notifications.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId, theme }) {
+  const onConnected = useEffectEvent(() => {
+    showNotification('Connected!', theme);
+  });
+
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.on('connected', () => {
+      onConnected();
+    });
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+
+  return <h1>Welcome to the {roomId} room!</h1>
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  const [isDark, setIsDark] = useState(false);
+  return (
+    <>
+      <label>
+        Choose the chat room:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={isDark}
+          onChange={e => setIsDark(e.target.checked)}
+        />
+        Use dark theme
+      </label>
+      <hr />
+      <ChatRoom
+        roomId={roomId}
+        theme={isDark ? 'dark' : 'light'}
+      />
+    </>
+  );
+}
+```
+
+```js tab="Tab 3"
+//chat.js
+export function createConnection(serverUrl, roomId) {
+  // A real implementation would actually connect to the server
+  let connectedCallback;
+  let timeout;
+  return {
+    connect() {
+      timeout = setTimeout(() => {
+        if (connectedCallback) {
+          connectedCallback();
+        }
+      }, 100);
+    },
+    on(event, callback) {
+      if (connectedCallback) {
+        throw Error('Cannot add the handler twice.');
+      }
+      if (event !== 'connected') {
+        throw Error('Only "connected" event is supported.');
+      }
+      connectedCallback = callback;
+    },
+    disconnect() {
+      clearTimeout(timeout);
+    }
+  };
+}
+```
+
+```js tab="Tab 4"
+//notifications.js hidden
+import Toastify from 'toastify-js';
+import 'toastify-js/src/toastify.css';
+
+export function showNotification(message, theme) {
+  Toastify({
+    text: message,
+    duration: 2000,
+    gravity: 'top',
+    position: 'right',
+    style: {
+      background: theme === 'dark' ? 'black' : 'white',
+      color: theme === 'dark' ? 'white' : 'black',
+    },
+  }).showToast();
+}
+```
+
+```js tab="Tab 5"
+```css
+label { display: block; margin-top: 10px; }
+```
+
+Код внутри Effect Events не является реактивным, поэтому изменение `theme` больше не заставляет ваш Effect заново подключаться.
+
+## Удаление зависимостей Effect {/*removing-effect-dependencies*/}
+
+Когда вы пишете Effect, линтер проверит, что вы включили в список зависимостей каждый реактивный value (например, props и state), который читает Effect. Это гарантирует, что ваш Effect остаётся синхронизированным с актуальными props и state компонента. Лишние зависимости могут привести к тому, что Effect будет запускаться слишком часто или даже создаст бесконечный цикл. Способ убрать их зависит от ситуации.
+
+Например, этот Effect зависит от объекта `options`, который пересоздаётся каждый раз, когда вы редактируете input:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+
+  const options = {
+    serverUrl: serverUrl,
+    roomId: roomId
+  };
+
+  useEffect(() => {
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [options]);
+
+  return (
+    <>
+      <h1>Welcome to the {roomId} room!</h1>
+      <input value={message} onChange={e => setMessage(e.target.value)} />
+    </>
+  );
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  return (
+    <>
+      <label>
+        Choose the chat room:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <hr />
+      <ChatRoom roomId={roomId} />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection({ serverUrl, roomId }) {
+  // A real implementation would actually connect to the server
+  return {
+    connect() {
+      console.log('✅ Connecting to "' + roomId + '" room at ' + serverUrl + '...');
+    },
+    disconnect() {
+      console.log('❌ Disconnected from "' + roomId + '" room at ' + serverUrl);
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+
+input { display: block; margin-bottom: 20px; }
+button { margin-left: 10px; }
+```
+
+Вам не нужно, чтобы чат переподключался каждый раз, когда вы начинаете печатать сообщение. Чтобы исправить эту проблему, перенесите создание объекта `options` внутрь Effect, чтобы Effect зависел только от строки `roomId`:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const options = {
+      serverUrl: serverUrl,
+      roomId: roomId
+    };
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+
+  return (
+    <>
+      <h1>Welcome to the {roomId} room!</h1>
+      <input value={message} onChange={e => setMessage(e.target.value)} />
+    </>
+  );
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  return (
+    <>
+      <label>
+        Choose the chat room:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <hr />
+      <ChatRoom roomId={roomId} />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection({ serverUrl, roomId }) {
+  // A real implementation would actually connect to the server
+  return {
+    connect() {
+      console.log('✅ Connecting to "' + roomId + '" room at ' + serverUrl + '...');
+    },
+    disconnect() {
+      console.log('❌ Disconnected from "' + roomId + '" room at ' + serverUrl);
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+```css
+input { display: block; margin-bottom: 20px; }
+button { margin-left: 10px; }
+```
+
+Обратите внимание, что вы не начали с редактирования списка зависимостей, чтобы удалить зависимость `options`. Это было бы неправильно. Вместо этого вы изменили окружающий код так, чтобы зависимость стала *ненужной*. Думайте о списке зависимостей как о перечне всех реактивных значений, используемых кодом вашего Effect. Вы не выбираете вручную, что туда положить. Список описывает ваш код. Чтобы изменить список зависимостей, измените код.
+
+## Повторное использование логики с custom Hooks {/*reusing-logic-with-custom-hooks*/}
+
+React поставляется со встроенными Hooks, такими как `useState`, `useContext` и `useEffect`. Иногда вам хочется иметь Hook для более конкретной задачи: например, для загрузки данных, отслеживания, находится ли пользователь в сети, или подключения к chat room. Для этого вы можете создавать собственные Hooks под нужды приложения.
+
+В этом примере custom Hook `usePointerPosition` отслеживает положение курсора, а custom Hook `useDelayedValue` возвращает значение, которое "отстаёт" от переданного на заданное число миллисекунд. Перемещайте курсор по области предпросмотра sandbox, чтобы увидеть след из точек, следующих за курсором:
+
+```js tab="Tab 1"
+import { usePointerPosition } from './usePointerPosition.js';
+import { useDelayedValue } from './useDelayedValue.js';
+
+export default function Canvas() {
+  const pos1 = usePointerPosition();
+  const pos2 = useDelayedValue(pos1, 100);
+  const pos3 = useDelayedValue(pos2, 200);
+  const pos4 = useDelayedValue(pos3, 100);
+  const pos5 = useDelayedValue(pos4, 50);
+  return (
+    <>
+      <Dot position={pos1} opacity={1} />
+      <Dot position={pos2} opacity={0.8} />
+      <Dot position={pos3} opacity={0.6} />
+      <Dot position={pos4} opacity={0.4} />
+      <Dot position={pos5} opacity={0.2} />
+    </>
+  );
+}
+
+function Dot({ position, opacity }) {
+  return (
+    <div style={{
+      position: 'absolute',
+      backgroundColor: 'pink',
+      borderRadius: '50%',
+      opacity,
+      transform: `translate(${position.x}px, ${position.y}px)`,
+      pointerEvents: 'none',
+      left: -20,
+      top: -20,
+      width: 40,
+      height: 40,
+    }} />
+  );
+}
+```
+
+```js tab="Tab 2"
+//usePointerPosition.js
+import { useState, useEffect } from 'react';
+
+export function usePointerPosition() {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    function handleMove(e) {
+      setPosition({ x: e.clientX, y: e.clientY });
+    }
+    window.addEventListener('pointermove', handleMove);
+    return () => window.removeEventListener('pointermove', handleMove);
+  }, []);
+  return position;
+}
+```
+
+```js tab="Tab 3"
+//useDelayedValue.js
+import { useState, useEffect } from 'react';
+
+export function useDelayedValue(value, delay) {
+  const [delayedValue, setDelayedValue] = useState(value);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setDelayedValue(value);
+    }, delay);
+  }, [value, delay]);
+
+  return delayedValue;
+}
+```
+
+```js tab="Tab 4"
+
+body { min-height: 300px; }
+```
+
+Вы можете создавать custom Hooks, комбинировать их, передавать данные между ними и переиспользовать их между компонентами. По мере роста приложения вы будете писать меньше Effects вручную, потому что сможете переиспользовать уже написанные custom Hooks. Кроме того, сообществом React поддерживается множество отличных custom Hooks.
