@@ -43,7 +43,7 @@ export default function MyApp() {
 
 Обратите внимание, что `<MyButton />` начинается с заглавной буквы. По этому признаку вы поймете, что это компонент React. Названия компонентов React всегда должны начинаться с заглавной буквы, в то время как HTML-теги должны быть написаны строчными буквами.
 
-<Sandpack code={
+{/* <Sandpack code={
 `function MyButton() {
     return (
       <button>
@@ -60,7 +60,43 @@ export default function MyApp() {
       </div>
     );
   }`}
-/>
+/> */}
+
+import { ReactDevStyleExample } from '../../components/react_dev_style_example';
+import { CounterDemo } from '../../examples/counter-demo';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={150}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`function MyButton() {
+    return (
+      <button>
+        I'm a button
+      </button>
+    );
+  }
+
+  export default function MyApp() {
+    return (
+      <div>
+        <h1>Welcome to my app</h1>
+        <MyButton />
+      </div>
+    );
+  }`,
+},
+  ]}
+>
+  <CounterDemo />
+</ReactDevStyleExample>
 
 Ключевые слова `export default` указывают основной компонент в файле. Если вы не знакомы с каким-либо элементом синтаксиса JavaScript, на сайтах [MDN](https://developer.mozilla.org/en-US/docs/web/javascript/reference/statements/export) и [javascript.info](https://javascript.info/import-export) есть отличные справочные материалы.
 
@@ -127,7 +163,7 @@ return (
 
 Более сложные выражения можно заключать в фигурные скобки JSX, например, [конкатенация строк](https://javascript.info/operators#string-concatenation-with-binary):
 
-```js tab="Tab 1"
+{/* ```js tab="Tab 1"
 const user = {
   name: 'Hedy Lamarr',
   imageUrl: 'https://react.dev/images/docs/scientists/yXOvdOSs.jpg',
@@ -160,7 +196,48 @@ export default function Profile() {
 .large {
   border: 4px solid gold;
 }
-```
+``` */}
+
+import { Example } from '../../examples/example copy';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`const user = {
+    name: 'Hedy Lamarr',
+    imageUrl: '/images/yXOvdOSs.jpg',
+    imageSize: 90,
+  };
+
+  export function Example() {
+    return (
+      <>
+        <h1>{user.name}</h1>
+        <img
+          className="avatar"
+          src={user.imageUrl}
+          alt={'Photo of ' + user.name}
+          style={{
+            width: user.imageSize,
+            height: user.imageSize
+          }}
+        />
+      </>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example />
+</ReactDevStyleExample>
 
 В приведенном выше примере `style={{}}` — это не специальный синтаксис, а обычный объект `{}` внутри фигурных скобок JSX `style={ }`. Атрибут `style` можно использовать, когда ваши стили зависят от переменных JavaScript.
 
@@ -234,7 +311,7 @@ return (
 
 Обратите внимание, что у `<li>` есть атрибут `key`. Для каждого элемента списка следует передавать строку или число, которое однозначно идентифицирует этот элемент среди остальных. Обычно ключ должен поступать из ваших данных, например, из идентификатора базы данных. React использует ваши ключи, чтобы знать, что произошло, если вы позже добавите, удалите или измените порядок элементов.
 
-<Sandpack code={
+{/* <Sandpack code={
 `const products = [
     { title: 'Cabbage', isFruit: false, id: 1 },
     { title: 'Garlic', isFruit: false, id: 2 },
@@ -257,7 +334,48 @@ return (
       <ul>{listItems}</ul>
     );
   }`}
-/>
+/> */}
+
+import { Example2 } from '../../examples/example copy 2';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`const products = [
+    { title: 'Cabbage', isFruit: false, id: 1 },
+    { title: 'Garlic', isFruit: false, id: 2 },
+    { title: 'Apple', isFruit: true, id: 3 },
+  ];
+
+  export function Example2() {
+    const listItems = products.map(product =>
+      <li
+        key={product.id}
+        style={{
+          color: product.isFruit ? 'magenta' : 'darkgreen'
+        }}
+      >
+        {product.title}
+      </li>
+    );
+
+    return (
+      <ul>{listItems}</ul>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example2 />
+</ReactDevStyleExample>
 
 ## Реагирование на события
 
@@ -321,7 +439,7 @@ React снова вызовет функцию вашего компонента
 
 Если вы отобразите один и тот же компонент несколько раз, каждый получит собственное состояние.
 
-<Sandpack code={
+{/* <Sandpack code={
 `import { useState } from 'react';
 
   export default function MyApp() {
@@ -347,7 +465,51 @@ React снова вызовет функцию вашего компонента
       </button>
     );
   }`}
-/>
+/> */}
+
+import { Example3 } from '../../examples/example copy 3';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
+
+  export function Example3() {
+    return (
+      <div>
+        <h1>Counters that update separately</h1>
+        <MyButton />
+        <MyButton />
+      </div>
+    );
+  }
+
+  function MyButton() {
+    const [count, setCount] = useState(0);
+
+    function handleClick() {
+      setCount(count + 1);
+    }
+
+    return (
+      <button onClick={handleClick}>
+        Clicked {count} times
+      </button>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example3 />
+</ReactDevStyleExample>
 
 Обратите внимание, как каждая кнопка «запоминает» своё собственное состояние `count` и не влияет на другие кнопки.
 
@@ -446,7 +608,7 @@ function MyButton({ count, onClick }) {
 
 При нажатии кнопки срабатывает обработчик `onClick`. Свойство `onClick` каждой кнопки было установлено в функцию `handleClick` внутри `MyApp`, поэтому выполняется код внутри неё. Этот код вызывает `setCount(count + 1)`, увеличивая переменную состояния `count`. Новое значение `count` передаётся в качестве свойства каждой кнопке, поэтому все они отображают новое значение. Это называется «поднятием состояния вверх». Перемещая состояние вверх, вы делитесь им между компонентами.
 
-<Sandpack code={
+{/* <Sandpack code={
 `import { useState } from 'react';
 
   export default function MyApp() {
@@ -472,9 +634,51 @@ function MyButton({ count, onClick }) {
       </button>
     );
   }`}
-/>
+/> */}
 
+import { Example4 } from '../../examples/example copy 4';
 
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
+
+  export function Example4() {
+    const [count, setCount] = useState(0);
+
+    function handleClick() {
+      setCount(count + 1);
+    }
+
+    return (
+      <div>
+        <h1>Counters that update together</h1>
+        <MyButton count={count} onClick={handleClick} />
+        <MyButton count={count} onClick={handleClick} />
+      </div>
+    );
+  }
+
+  function MyButton({ count, onClick }) {
+    return (
+      <button onClick={onClick}>
+        Clicked {count} times
+      </button>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example4 />
+</ReactDevStyleExample>
 
 ## Что дальше?
 
