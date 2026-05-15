@@ -5,9 +5,7 @@ description: React изначально разрабатывался с расч
 
 ## Попробуйте React
 
-Для работы с React ничего устанавливать не нужно. Попробуйте отредактировать эту песочницу!
-
-<Sandpack code={
+{/* <Sandpack code={
   `function Greeting({ name }) {
     return <h1>Hello, {name}</h1>;
   }
@@ -15,9 +13,34 @@ description: React изначально разрабатывался с расч
   export default function App() {
     return <Greeting name="world" />
   }`} 
-/>
+/> */}
 
-Большинство страниц в документации React содержат подобные песочницы. Помимо документации React, существует множество онлайн-песочниц, поддерживающих React: например, [CodeSandbox](https://codesandbox.io/s/new), [StackBlitz](https://stackblitz.com/fork/react) или [CodePen.](https://codepen.io/pen?template=QWYVwWN)
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example5 } from '../../../examples/example copy 5';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={130}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
+
+export default function Gallery() {
+    const [index, setIndex] = useState(0);
+}`,
+  },
+  ]}
+>
+  <Example5 />
+</ReactDevStyleExample>
+
+Помимо документации React, существует множество онлайн-песочниц, поддерживающих React: например, [CodeSandbox](https://codesandbox.io/s/new), [StackBlitz](https://stackblitz.com/fork/react) или [CodePen.](https://codepen.io/pen?template=QWYVwWN)
 
 Чтобы попробовать React локально на своем компьютере, [скачайте эту HTML-страницу.](https://gist.githubusercontent.com/gaearon/0275b1e1518599bbeafcde4722e79ed1/raw/db72dcbf3384ee1708c4a07d3be79860db04bff0/example.html) Откройте ее в своем редакторе и в браузере!
 

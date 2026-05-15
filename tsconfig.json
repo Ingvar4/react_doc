@@ -38,7 +38,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-, "examples/example copy 4.js"  ],
+, "examples/example copy 4.js", "examples/example copy.js", "examples/example copy 3.js", "examples/example copy 2.js", "examples/example copy 15.js"  ],
   "exclude": [
     "node_modules"
   ]

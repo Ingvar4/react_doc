@@ -1,5 +1,3 @@
-'use client'
-
 const user = {
   name: 'Hedy Lamarr',
   imageUrl: '/images/yXOvdOSs.jpg',

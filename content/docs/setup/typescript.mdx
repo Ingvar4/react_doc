@@ -50,7 +50,7 @@ npm install --save-dev @types/react @types/react-dom
 
 Возьмем [компонент `MyButton`](/learn#components) из руководства [«Быстрый старт»](/learn) и добавим тип, описывающий `title` для кнопки:
 
-<Sandpack code={
+{/* <Sandpack code={
 `function MyButton({ title }: { title: string }) {
     return (
       <button>{title}</button>
@@ -65,39 +65,50 @@ npm install --save-dev @types/react @types/react-dom
       </div>
     );
   }`}
-/>
+/> */}
 
-<Callout title="" type="idea">
+```js
+function MyButton({ title }: { title: string }) {
+  return (
+    <button>{title}</button>
+  );
+}
 
-Эти песочницы могут обрабатывать код TypeScript, но не запускают проверку типов. Это означает, что вы можете изменять песочницы TypeScript для обучения, но не будете получать никаких ошибок или предупреждений о типах. Чтобы получить проверку типов, вы можете использовать [TypeScript Playground](https://www.typescriptlang.org/play) или более полнофункциональную онлайн-песочницу.
-
-</Callout>
+export default function MyApp() {
+  return (
+    <div>
+      <h1>Welcome to my app</h1>
+      <MyButton title="Я кнопка" />
+    </div>
+  );
+}
+```
 
 Этот встроенный синтаксис — самый простой способ задать типы для компонента, хотя, как только у вас появляется несколько полей для описания, он может стать неудобным. Вместо этого вы можете использовать `interface` или `type` для описания пропсов компонента:
 
-<Sandpack code={
-`interface MyButtonProps {
-    /** Текст, который будет отображаться внутри кнопки */
-    title: string;
-    /** Можно ли взаимодействовать с кнопкой */
-    disabled: boolean;
-  }
+```js
+interface MyButtonProps {
+  /** Текст, который будет отображаться внутри кнопки */
+  title: string;
+  /** Можно ли взаимодействовать с кнопкой */
+  disabled: boolean;
+}
 
-  function MyButton({ title, disabled }: MyButtonProps) {
-    return (
-      <button disabled={disabled}>{title}</button>
-    );
-  }
+function MyButton({ title, disabled }: MyButtonProps) {
+  return (
+    <button disabled={disabled}>{title}</button>
+  );
+}
 
-  export default function MyApp() {
-    return (
-      <div>
-        <h1>Добро пожаловать в мое приложение</h1>
-        <MyButton title="Я кнопка с отключенной функцией" disabled={true}/>
-      </div>
-    );
-  }`}
-/>
+export default function MyApp() {
+  return (
+    <div>
+      <h1>Добро пожаловать в мое приложение</h1>
+      <MyButton title="Я кнопка с отключенной функцией" disabled={true}/>
+    </div>
+  );
+}
+```
 
 Тип, описывающий пропсы вашего компонента, может быть настолько простым или сложным, насколько вам нужно, хотя они должны быть объектным типом, описанным с помощью `type` или `interface`. Вы можете узнать о том, как TypeScript описывает объекты, в [Типы объектов](https://www.typescriptlang.org/docs/handbook/2/objects.html), но вам также может быть интересно использовать [объединенных типов](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#union-types) для описания свойства, которое может быть одним из нескольких различных типов, а также руководство [Создание типов из типов](https://www.typescriptlang.org/docs/handbook/2/types-from-types.html) для более сложных случаев использования.
 
@@ -147,7 +158,7 @@ const [requestState, setRequestState] = useState<RequestState>({ status: „idle
 
 Хук [`useReducer`](/reference/react/useReducer) — это более сложный хук, который принимает функцию-редуктор и начальное состояние. Типы для функции-редуктора выводятся из начального состояния. Вы можете опционально предоставить аргумент типа при вызове `useReducer`, чтобы задать тип для состояния, но часто лучше вместо этого задать тип в начальном состоянии:
 
-<Sandpack code={
+{/* <Sandpack code={
 `import {useReducer} from 'react';
   interface State {
     count: number
@@ -186,7 +197,66 @@ const [requestState, setRequestState] = useState<RequestState>({ status: „idle
       </div>
     );
   }`}
-/>
+/> */}
+
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example6 } from '../../../examples/example copy 6';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={180}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.tsx',
+  lang: 'tsx',
+  code: String.raw`import {useReducer} from 'react';
+
+  interface State {
+    count: number
+  };
+
+  type CounterAction =
+    | { type: "reset" }
+    | { type: "setCount"; value: State["count"] }
+
+  const initialState: State = { count: 0 };
+
+  function stateReducer(state: State, action: CounterAction): State {
+    switch (action.type) {
+      case "reset":
+        return initialState;
+      case "setCount":
+        return { ...state, count: action.value };
+      default:
+        throw new Error("Unknown action");
+    }
+  }
+
+  export default function App() {
+    const [state, dispatch] = useReducer(stateReducer, initialState);
+
+    const addFive = () => dispatch({ type: "setCount", value: state.count + 5 });
+    const reset = () => dispatch({ type: "reset" });
+
+    return (
+      <div>
+        <h1>Welcome to my counter</h1>
+
+        <p>Count: {state.count}</p>
+        <button onClick={addFive}>Add 5</button>
+        <button onClick={reset}>Reset</button>
+      </div>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example6 />
+</ReactDevStyleExample>
 
 Мы используем TypeScript в нескольких ключевых местах:
 
@@ -214,34 +284,53 @@ export default function App() {
 Тип значения, предоставляемого контекстом, определяется на основе значения, переданного при вызове `createContext`:
 
 
-```ts
-import { createContext, useContext, useState } from 'react';
+import { Example7 } from '../../../examples/example copy 7';
 
-type Theme = "light" | "dark" | "system";
-const ThemeContext = createContext<Theme>("system");
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={180}
+  files={[
 
-const useGetTheme = () => useContext(ThemeContext);
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.tsx',
+  lang: 'tsx',
+  code: String.raw`import { createContext, useContext, useState } from 'react';
 
-export default function MyApp() {
-  const [theme, setTheme] = useState<Theme>('light');
+  type Theme = "light" | "dark" | "system";
+  const ThemeContext = createContext<Theme>("system");
 
-  return (
-    <ThemeContext value={theme}>
-      <MyComponent />
-    </ThemeContext>
-  )
-}
+  const useGetTheme = () => useContext(ThemeContext);
 
-function MyComponent() {
-  const theme = useGetTheme();
+  export default function MyApp() {
+    const [theme, setTheme] = useState<Theme>('light');
 
-  return (
-    <div>
-      <p>Current theme: {theme}</p>
-    </div>
-  )
-}
-```
+    return (
+      <ThemeContext value={theme}>
+        <MyComponent />
+      </ThemeContext>
+    )
+  }
+
+  function MyComponent() {
+    const theme = useGetTheme();
+
+    return (
+      <div>
+        <p>Current theme: {theme}</p>
+      </div>
+    )
+  }`,
+  },
+  ]}
+>
+  <Example7 />
+</ReactDevStyleExample>
+
+
+
 
 Этот прием работает, когда у вас есть смысловое значение по умолчанию, но иногда бывают случаи, когда его нет, и в таких случаях `null` может показаться разумным значением по умолчанию. Однако, чтобы система типов могла понять ваш код, вам нужно явно задать `ContextShape | null` в `createContext`.
 
@@ -347,7 +436,7 @@ export default function Form() {
 
 При работе с событиями DOM в React тип события часто можно определить по обработчику событий. Однако, если вы хотите извлечь функцию для передачи в обработчик событий, вам нужно явно указать тип события.
 
-<Sandpack code={
+{/* <Sandpack code={
 `import { useState } from 'react';
 
   export default function Form() {
@@ -364,7 +453,42 @@ export default function Form() {
       </>
     );
   }`}
-/>
+/> */}
+
+import { Example8 } from '../../../examples/example copy 8';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={180}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.tsx',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
+
+  export function Example8() {
+    const [value, setValue] = useState("Change me");
+
+    function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+      setValue(event.currentTarget.value);
+    }
+
+    return (
+      <>
+        <input value={value} onChange={handleChange} />
+        <p>Value: {value}</p>
+      </>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example8 />
+</ReactDevStyleExample>
 
 В React предоставляется множество типов событий — полный список можно найти [здесь](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/b580df54c0819ec9df62b0835a315dd48b8594a9/types/react/index.d.ts#L1247C1-L1373) основанный на [наиболее популярных событиях из DOM](https://developer.mozilla.org/en-US/docs/Web/Events).
 
