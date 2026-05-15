@@ -16,7 +16,7 @@ description: Вся прелесть компонентов заключаетс
 
 В [Вашем первом компоненте](/docs/describing-the-ui/your-first-component) вы создали компонент `Profile` и компонент `Gallery`, который его отображает:
 
-<Sandpack code={
+{/* <Sandpack code={
 `function Profile() {
     return (
       <img
@@ -35,7 +35,45 @@ description: Вся прелесть компонентов заключаетс
       </section>
     );
   }`}
-/>
+/> */}
+
+import { Example19 } from '../../../examples/example copy 19';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={220}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`function Profile() {
+    return (
+      <img
+        src="https://react.dev/images/docs/scientists/MK3eW3As.jpg"
+        alt="Katherine Johnson"
+      />
+    );
+  }
+
+  export default function Gallery() {
+    return (
+      <section>
+        <h1>Amazing scientists</h1>
+        <Profile />
+        <Profile />
+        <Profile />
+      </section>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example19 />
+</ReactDevStyleExample>
 
 В данный момент они находятся в **файле корневого компонента**, который в этом примере называется `App.js`. Однако в зависимости от вашей конфигурации ваш корневой компонент может находиться в другом файле. Если вы используете фреймворк с файловой маршрутизацией, такой как Next.js, ваш корневой компонент будет разным для каждой страницы.
 
@@ -50,39 +88,56 @@ description: Вся прелесть компонентов заключаетс
 3. **Импортируйте** его в файл, где вы будете использовать компонент (используя соответствующий метод для импорта [по умолчанию](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/import#importing_defaults) или [именованного](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/import#import_a_single_export_from_a_module) exports).
 Здесь и `Profile`, и `Gallery` были перенесены из `App.js` в новый файл с именем `Gallery.js`. Теперь вы можете изменить `App.js`, чтобы импортировать `Gallery` из `Gallery.js`:
 
-```js tab="Tab 1"
-//App.js
-import Gallery from './Gallery.js';
+import { Example10 } from '../../../examples/example copy 10';
 
-export default function App() {
-  return (
-    <Gallery />
-  );
-}
-```
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={260}
+  files={[
 
-```js tab="Tab 2"
-//Gallery.js
-function Profile() {
-  return (
-    <img
-      src="https://react.dev/images/docs/scientists/QIrZWGIs.jpg"
-      alt="Alan L. Hart"
-    />
-  );
-}
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import Gallery from './Gallery.js';
 
-export default function Gallery() {
-  return (
-    <section>
-      <h1>Amazing scientists</h1>
-      <Profile />
-      <Profile />
-      <Profile />
-    </section>
-  );
-}
-```
+  export default function App() {
+    return (
+      <Gallery />
+    );
+  }`,
+  },
+  {
+  tab: 'utils',
+  label: '',
+  filename: 'Gallery.js',
+  lang: 'ts',
+  code: String.raw`function Profile() {
+    return (
+      <img
+        src="https://react.dev/images/docs/scientists/QIrZWGIs.jpg"
+        alt="Alan L. Hart"
+      />
+    );
+  }
+
+  export default function Gallery() {
+    return (
+      <section>
+        <h1>Amazing scientists</h1>
+        <Profile />
+        <Profile />
+        <Profile />
+      </section>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example10 />
+</ReactDevStyleExample>
 
 Обратите внимание, как этот пример теперь разбит на два файла компонентов:
 1. `Gallery.js`:
@@ -144,40 +199,59 @@ export default function App() {
 ```
 Теперь `Gallery.js` содержит два экспорта: экспорт по умолчанию `Gallery` и именованный экспорт `Profile`. `App.js` импортирует оба из них. Попробуйте изменить `<Profile />` на `<Gallery />` и обратно в этом примере:
 
-```js tab="Tab 1"
-//App.js
-import Gallery from './Gallery.js';
-import { Profile } from './Gallery.js';
+import { Example20 } from '../../../examples/example copy 20';
 
-export default function App() {
-  return (
-    <Profile />
-  );
-}
-```
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={180}
+  files={[
 
-```js tab="Tab 2"
-//Gallery.js
-export function Profile() {
-  return (
-    <img
-      src="https://react.dev/images/docs/scientists/QIrZWGIs.jpg"
-      alt="Alan L. Hart"
-    />
-  );
-}
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import Gallery from './Gallery.js';
+  import { Profile } from './Gallery.js';
 
-export default function Gallery() {
-  return (
-    <section>
-      <h1>Amazing scientists</h1>
+  export default function App() {
+    return (
       <Profile />
-      <Profile />
-      <Profile />
-    </section>
-  );
-}
-```
+    );
+  }`,
+  },
+  {
+  tab: 'utils',
+  label: '',
+  filename: 'Gallery.js',
+  lang: 'ts',
+  code: String.raw`export function Profile() {
+    return (
+      <img
+        src="https://react.dev/images/docs/scientists/QIrZWGIs.jpg"
+        alt="Alan L. Hart"
+      />
+    );
+  }
+
+  export default function Gallery() {
+    return (
+      <section>
+        <h1>Amazing scientists</h1>
+        <Profile />
+        <Profile />
+        <Profile />
+      </section>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example20 />
+</ReactDevStyleExample>
+
+
 
 Теперь вы используете сочетание экспорта по умолчанию и именованного экспорта:
 

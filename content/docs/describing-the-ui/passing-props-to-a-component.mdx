@@ -16,7 +16,7 @@ description: Компоненты React используют *пропсы* дл
 
 Props — это информация, которую вы передаете тегу JSX. Например, `className`, `src`, `alt`, `width` и `height` — это некоторые из пропсов, которые вы можете передать в `<img>`:
 
-<Sandpack code={
+{/* <Sandpack code={
 `function Avatar() {
     return (
       <img
@@ -37,7 +37,47 @@ Props — это информация, которую вы передаете т
       <Avatar />
     );
   }`}
-/>
+/> */}
+
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example25 } from '../../../examples/example copy 25';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`function Avatar() {
+    return (
+      <img
+        className="avatar"
+        src="https://react.dev/images/docs/scientists/1bX5QH6.jpg"
+        alt="Lin Lanying"
+        style={{
+          margin: '20px', 
+          borderRadius: "50%",
+          height: '120px'
+        }}
+      />
+    );
+  }
+
+  export default function Profile() {
+    return (
+      <Avatar />
+    );
+  }`,
+  },
+  ]}
+>
+  <Example25 />
+</ReactDevStyleExample>
 
 Пропсы, которые можно передать тегу `<img>`, являются предопределенными (ReactDOM соответствует [стандарту HTML](https://www.w3.org/TR/html52/semantics-embedded-content.html#the-img-element)). Но вы можете передавать любые пропсы *своим собственным* компонентам, таким как `<Avatar>`, чтобы настраивать их. Вот как это сделать!
 
@@ -91,62 +131,79 @@ function Avatar({ person, size }) {
 
 Теперь вы можете настроить `Avatar` для рендеринга разными способами с помощью различных пропсов. Попробуйте изменить значения!
 
-```js tab="Tab 1"
-//App.js
-import { getImageUrl } from './utils.js';
+import { Example26 } from '../../../examples/example copy 26';
 
-function Avatar({ person, size }) {
-  return (
-    <img
-      className="avatar"
-      src={getImageUrl(person)}
-      alt={person.name}
-      width={size}
-      height={size}
-    />
-  );
-}
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
 
-export default function Profile() {
-  return (
-    <div>
-      <Avatar
-        size={100}
-        person={{
-          name: 'Katsuko Saruhashi',
-          imageId: 'YfeOqp2'
-        }}
-      />
-      <Avatar
-        size={80}
-        person={{
-          name: 'Aklilu Lemma',
-          imageId: 'OKS67lh'
-        }}
-      />
-      <Avatar
-        size={50}
-        person={{
-          name: 'Lin Lanying',
-          imageId: '1bX5QH6'
-        }}
-      />
-    </div>
-  );
-}
-```
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { getImageUrl } from './utils.js';
 
-```js tab="Tab 2"
-//utils.js
-export function getImageUrl(person, size = 's') {
-  return (
-    'https://react.dev/images/docs/scientists/' +
-    person.imageId +
-    size +
-    '.jpg'
-  );
-}
-```
+  function Avatar({ person, size }) {
+    return (
+      <img
+        className="avatar"
+        src={getImageUrl(person)}
+        alt={person.name}
+        width={size}
+        height={size}
+      />
+    );
+  }
+
+  export default function Profile() {
+    return (
+      <div>
+        <Avatar
+          size={100}
+          person={{
+            name: 'Katsuko Saruhashi',
+            imageId: 'YfeOqp2'
+          }}
+        />
+        <Avatar
+          size={80}
+          person={{
+            name: 'Aklilu Lemma',
+            imageId: 'OKS67lh'
+          }}
+        />
+        <Avatar
+          size={50}
+          person={{
+            name: 'Lin Lanying',
+            imageId: '1bX5QH6'
+          }}
+        />
+      </div>
+    );
+  }`,
+  },
+  {
+  tab: 'utils',
+  label: '',
+  filename: 'utils.js',
+  lang: 'ts',
+  code: String.raw`export function getImageUrl(person, size = 's') {
+    return (
+      'https://react.dev/images/docs/scientists/' +
+      person.imageId +
+      size +
+      '.jpg'
+    );
+  }`,
+  },
+  ]}
+>
+  <Example26 />
+</ReactDevStyleExample>
 
 Пропсы позволяют рассматривать родительские и дочерние компоненты независимо друг от друга. Например, вы можете изменить пропсы `person` или `size` внутри `Profile`, не задумываясь о том, как их использует `Avatar`. Аналогично, вы можете изменить то, как `Avatar` использует эти пропсы, не обращая внимания на `Profile`.
 
@@ -254,61 +311,80 @@ return (
 
 Когда вы вкладываете контент внутрь тега JSX, родительский компонент получит этот контент в виде проп `children`. Например, компонент `Card` ниже получит проп `children`, установленный в значение `<Avatar />`, и отобразит его в оборачивающем div:
 
-```js tab="Tab 1"
-//App.js
-import Avatar from './Avatar.js';
+import { Example13 } from '../../../examples/example copy 13';
 
-function Card({ children }) {
-  return (
-    <div className="card">
-      {children}
-    </div>
-  );
-}
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
 
-export default function Profile() {
-  return (
-    <Card>
-      <Avatar
-        size={100}
-        person={{
-          name: 'Katsuko Saruhashi',
-          imageId: 'YfeOqp2'
-        }}
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import Avatar from './Avatar.js';
+
+  function Card({ children }) {
+    return (
+      <div className="card">
+        {children}
+      </div>
+    );
+  }
+
+  export default function Profile() {
+    return (
+      <Card>
+        <Avatar
+          size={100}
+          person={{
+            name: 'Katsuko Saruhashi',
+            imageId: 'YfeOqp2'
+          }}
+        />
+      </Card>
+    );
+  }`,
+  },
+  {
+  tab: 'utils',
+  label: '',
+  filename: 'Avatar.js',
+  lang: 'ts',
+  code: String.raw`import { getImageUrl } from './utils.js';
+
+  export default function Avatar({ person, size }) {
+    return (
+      <img
+        className="avatar"
+        src={getImageUrl(person)}
+        alt={person.name}
+        width={size}
+        height={size}
       />
-    </Card>
-  );
-}
-```
-
-```js tab="Tab 2"
-//Avatar.js
-import { getImageUrl } from './utils.js';
-
-export default function Avatar({ person, size }) {
-  return (
-    <img
-      className="avatar"
-      src={getImageUrl(person)}
-      alt={person.name}
-      width={size}
-      height={size}
-    />
-  );
-}
-```
-
-```js tab="Tab 3"
-//utils.js
-export function getImageUrl(person, size = 's') {
-  return (
-    'https://react.dev/images/docs/scientists/' +
-    person.imageId +
-    size +
-    '.jpg'
-  );
-}
-```
+    );
+  }`,
+  },
+  {
+  tab: 'css',
+  label: '',
+  filename: 'utils.js',
+  lang: 'js',
+  code: String.raw`export function getImageUrl(person, size = 's') {
+    return (
+      'https://react.dev/images/docs/scientists/' +
+      person.imageId +
+      size +
+      '.jpg'
+    );
+  }`,
+  },
+  ]}
+>
+  <Example13 />
+</ReactDevStyleExample>
 
 Попробуйте заменить `<Avatar>` внутри `<Card>` на какой-нибудь текст, чтобы увидеть, как компонент `Card` может обернуть любое вложенное содержимое. Ему не нужно «знать», что именно рендерится внутри него. Вы будете встречать этот гибкий паттерн во многих местах.
 
@@ -320,53 +396,31 @@ export function getImageUrl(person, size = 's') {
 
 Компонент `Clock`, приведенный ниже, получает два пропса от своего родительского компонента: `color` и `time`. (Код родительского компонента опущен, поскольку он использует [state](/learn/state-a-components-memory), в который мы пока не будем углубляться.)
 
-```js tab="Tab 1"
-//Clock.js
-export default function Clock({ color, time }) {
-  return (
-    <h1 style={{ color: color }}>
-      {time}
-    </h1>
-  );
-}
-```
+import { Example27 } from '../../../examples/example copy 27';
 
-```js tab="Tab 2"
-//App.js
-import { useState, useEffect } from 'react';
-import Clock from './Clock.js';
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={150}
+  files={[
 
-function useTime() {
-  const [time, setTime] = useState(() => new Date());
-  
-useEffect(() => {
-    const id = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-  return time;
-}
-
-export default function App() {
-  const time = useTime();
-  const [color, setColor] = useState('lightcoral');
-  
-return (
-    <div>
-      <p>
-        Выберите цвет:{' '}
-        <select value={color} onChange={e => setColor(e.target.value)}>
-          <option value="lightcoral">lightcoral</option>
-          <option value="midnightblue">midnightblue</option>
-          <option value="rebeccapurple">rebeccapurple</option>
-        </select>
-      </p>
-      <Clock color={color} time={time.toLocaleTimeString()} />
-    </div>
-  );
-}
-```
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'Clock.js',
+  lang: 'tsx',
+  code: String.raw`export default function Clock({ color, time }) {
+    return (
+      <h1 style={{ color: color }}>
+        {time}
+      </h1>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example27 />
+</ReactDevStyleExample>
 
 Этот пример иллюстрирует, что **компонент может получать разные пропсы с течением времени.** Пропсы не всегда статичны! Здесь проп `time` меняется каждую секунду, а проп `color` меняется, когда вы выбираете другой цвет. Пропсы отражают данные компонента в любой момент времени, а не только в начале.
 
