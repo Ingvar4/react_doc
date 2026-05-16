@@ -54,22 +54,23 @@ return <ul>{listItems}</ul>;
 
 Вот результат:
 
-<Sandpack code={
-`const people = [
-    'Креола Кэтрин Джонсон: математик',
-    'Марио Хосе Молина-Паскель Энрикес: химик',
-    'Мохаммад Абдус Салам: физик',
-    'Перси Лавон Джулиан: химик',
-    'Субраманьян Чандрасекар: астрофизик'
-  ];
 
-  export default function List() {
-    const listItems = people.map(person =>
-      <li>{person}</li>
-    );
-    return <ul>{listItems}</ul>;
-  }`}
-/>
+```js
+const people = [
+  'Креола Кэтрин Джонсон: математик',
+  'Марио Хосе Молина-Паскель Энрикес: химик',
+  'Мохаммад Абдус Салам: физик',
+  'Перси Лавон Джулиан: химик',
+  'Субраманьян Чандрасекар: астрофизик'
+];
+
+export default function List() {
+  const listItems = people.map(person =>
+    <li>{person}</li>
+  );
+  return <ul>{listItems}</ul>;
+}
+```
 
 Обратите внимание, что отображается ошибка консоли:
 
@@ -258,74 +259,94 @@ Warning: Each child in a list should have a unique “key” prop.
 
 Вместо того чтобы генерировать ключи на лету, вам следует включить их в ваши данные:
 
-```js tab="Tab 1"
-//App.js
-import { people } from './data.js';
-import { getImageUrl } from './utils.js';
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example15 } from '../../../examples/example copy 15';
 
-export default function List() {
-  const listItems = people.map(person =>
-    <li key={person.id}>
-      <img
-        src={getImageUrl(person)}
-        alt={person.name}
-      />
-      <p>
-        <b>{person.name}</b>
-          {' ' + person.profession + ' '}
-          known for {person.accomplishment}
-      </p>
-    </li>
-  );
-  return <ul>{listItems}</ul>;
-}
-```
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={375}
+  files={[
 
-```js tab="Tab 2"
-//data.js
-export const people = [{
-  id: 0, // Used in JSX as a key
-  name: 'Creola Katherine Johnson',
-  profession: 'mathematician',
-  accomplishment: 'spaceflight calculations',
-  imageId: 'MK3eW3A'
-}, {
-  id: 1, // Used in JSX as a key
-  name: 'Mario José Molina-Pasquel Henríquez',
-  profession: 'chemist',
-  accomplishment: 'discovery of Arctic ozone hole',
-  imageId: 'mynHUSa'
-}, {
-  id: 2, // Used in JSX as a key
-  name: 'Mohammad Abdus Salam',
-  profession: 'physicist',
-  accomplishment: 'electromagnetism theory',
-  imageId: 'bE7W1ji'
-}, {
-  id: 3, // Used in JSX as a key
-  name: 'Percy Lavon Julian',
-  profession: 'chemist',
-  accomplishment: 'pioneering cortisone drugs, steroids and birth control pills',
-  imageId: 'IOjWm71'
-}, {
-  id: 4, // Used in JSX as a key
-  name: 'Subrahmanyan Chandrasekhar',
-  profession: 'astrophysicist',
-  accomplishment: 'white dwarf star mass calculations',
-  imageId: 'lrWQx8l'
-}];
-```
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { people } from './data.js';
+  import { getImageUrl } from './utils.js';
 
-```js tab="Tab 3"
-//utils.js
-export function getImageUrl(person) {
-  return (
-    'https://react.dev/images/docs/scientists/' +
-    person.imageId +
-    's.jpg'
-  );
-}
-```
+  export default function List() {
+    const listItems = people.map(person =>
+      <li key={person.id}>
+        <img
+          src={getImageUrl(person)}
+          alt={person.name}
+        />
+        <p>
+          <b>{person.name}</b>
+            {' ' + person.profession + ' '}
+            known for {person.accomplishment}
+        </p>
+      </li>
+    );
+    return <ul>{listItems}</ul>;
+  }`,
+  },
+  {
+  tab: 'utils',
+  label: '',
+  filename: 'data.js',
+  lang: 'ts',
+  code: String.raw`export const people = [{
+    id: 0, // Used in JSX as a key
+    name: 'Creola Katherine Johnson',
+    profession: 'mathematician',
+    accomplishment: 'spaceflight calculations',
+    imageId: 'MK3eW3A'
+  }, {
+    id: 1, // Used in JSX as a key
+    name: 'Mario José Molina-Pasquel Henríquez',
+    profession: 'chemist',
+    accomplishment: 'discovery of Arctic ozone hole',
+    imageId: 'mynHUSa'
+  }, {
+    id: 2, // Used in JSX as a key
+    name: 'Mohammad Abdus Salam',
+    profession: 'physicist',
+    accomplishment: 'electromagnetism theory',
+    imageId: 'bE7W1ji'
+  }, {
+    id: 3, // Used in JSX as a key
+    name: 'Percy Lavon Julian',
+    profession: 'chemist',
+    accomplishment: 'pioneering cortisone drugs, steroids and birth control pills',
+    imageId: 'IOjWm71'
+  }, {
+    id: 4, // Used in JSX as a key
+    name: 'Subrahmanyan Chandrasekhar',
+    profession: 'astrophysicist',
+    accomplishment: 'white dwarf star mass calculations',
+    imageId: 'lrWQx8l'
+  }];`,
+  },
+  {
+  tab: 'css',
+  label: '',
+  filename: 'utils.js',
+  lang: 'ts',
+  code: String.raw`export function getImageUrl(person) {
+    return (
+      'https://react.dev/images/docs/scientists/' +
+      person.imageId +
+      's.jpg'
+    );
+  }`,
+  },
+  ]}
+>
+  <Example15 />
+</ReactDevStyleExample>
 
 <Callout type='idea'>
 #### Отображение нескольких узлов DOM для каждого элемента списка {/*displaying-several-dom-nodes-for-each-list-item*/}

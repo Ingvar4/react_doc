@@ -31,70 +31,94 @@ React создает дерево пользовательского интер�
 
 Вот приложение React, которое отображает вдохновляющие цитаты.
 
-```js tab="Tab 1"
-//App.js
-import FancyText from './FancyText';
-import InspirationGenerator from './InspirationGenerator';
-import Copyright from './Copyright';
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example37 } from '../../../examples/example copy 37';
 
-export default function App() {
-  return (
-    <>
-      <FancyText title text="Get Inspired App" />
-      <InspirationGenerator>
-        <Copyright year={2004} />
-      </InspirationGenerator>
-    </>
-  );
-}
-```
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
 
-```js tab="Tab 2"
-//FancyText.js
-export default function FancyText({title, text}) {
-  return title
-    ? <h1 className='fancy title'>{text}</h1>
-    : <h3 className='fancy cursive'>{text}</h3>
-}
-```
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import FancyText from './FancyText';
+  import InspirationGenerator from './InspirationGenerator';
+  import Copyright from './Copyright';
 
-```js tab="Tab 3"
-//InspirationGenerator.js
-import * as React from 'react';
-import quotes from './quotes';
-import FancyText from './FancyText';
+  export default function App() {
+    return (
+      <>
+        <FancyText title text="Get Inspired App" />
+        <InspirationGenerator>
+          <Copyright year={2004} />
+        </InspirationGenerator>
+      </>
+    );
+  }`,
+  },
+  {
+  tab: 'tsx2',
+  label: '',
+  filename: 'FaTex.js',
+  lang: 'tsx',
+  code: String.raw`export default function FancyText({title, text}) {
+    return title
+      ? <h1 className='fancy title'>{text}</h1>
+      : <h3 className='fancy cursive'>{text}</h3>
+  }`,
+  },
+  {
+  tab: 'tsx3',
+  label: '',
+  filename: 'InGen.js',
+  lang: 'tsx',
+  code: String.raw`import * as React from 'react';
+  import quotes from './quotes';
+  import FancyText from './FancyText';
 
-export default function InspirationGenerator({children}) {
-  const [index, setIndex] = React.useState(0);
-  const quote = quotes[index];
-  const next = () => setIndex((index + 1) % quotes.length);
+  export default function InspirationGenerator({children}) {
+    const [index, setIndex] = React.useState(0);
+    const quote = quotes[index];
+    const next = () => setIndex((index + 1) % quotes.length);
 
-  return (
-    <>
-      <p>Your inspirational quote is:</p>
-      <FancyText text={quote} />
-      <button onClick={next}>Inspire me again</button>
-      {children}
-    </>
-  );
-}
-```
-
-```js tab="Tab 4"
-//Copyright.js
-export default function Copyright({year}) {
-  return <p className='small'>©️ {year}</p>;
-}
-```
-
-```js tab="Tab 5"
-//quotes.js
-export default [
-  "Don’t let yesterday take up too much of today.” — Will Rogers",
-  "Ambition is putting a ladder against the sky.",
-  "A joy that's shared is a joy made double.",
-  ];
-```
+    return (
+      <>
+        <p>Your inspirational quote is:</p>
+        <FancyText text={quote} />
+        <button onClick={next}>Inspire me again</button>
+        {children}
+      </>
+    );
+  }`,
+  },
+  {
+  tab: 'tsx4',
+  label: '',
+  filename: 'Cprt.js',
+  lang: 'tsx',
+  code: String.raw`export default function Copyright({year}) {
+    return <p className='small'>©️ {year}</p>;
+  }`,
+  },
+  {
+  tab: 'tsx5',
+  label: '',
+  filename: 'quo.js',
+  lang: 'tsx',
+  code: String.raw`export default [
+    "Don’t let yesterday take up too much of today.” — Will Rogers",
+    "Ambition is putting a ladder against the sky.",
+    "A joy that's shared is a joy made double.",
+  ];`,
+  },
+  ]}
+>
+  <Example37 />
+</ReactDevStyleExample>
 
 <img src="/images/render_tree.png" alt="1" style={{ height: 'auto' }} />
 
@@ -120,84 +144,109 @@ React, как фреймворк пользовательского интерф
 
 Мы можем обновить приложение, чтобы оно условно отображало либо вдохновляющую цитату, либо цвет.
 
-```js tab="Tab 1"
-//App.js
-import FancyText from './FancyText';
-import InspirationGenerator from './InspirationGenerator';
-import Copyright from './Copyright';
+import { Example38 } from '../../../examples/example copy 38';
 
-export default function App() {
-  return (
-    <>
-      <FancyText title text="Get Inspired App" />
-      <InspirationGenerator>
-        <Copyright year={2004} />
-      </InspirationGenerator>
-    </>
-  );
-}
-```
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={300}
+  files={[
 
-```js tab="Tab 2"
-//FancyText.js
-export default function FancyText({title, text}) {
-  return title
-    ? <h1 className='fancy title'>{text}</h1>
-    : <h3 className='fancy cursive'>{text}</h3>
-}
-```
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import FancyText from './FancyText';
+  import InspirationGenerator from './InspirationGenerator';
+  import Copyright from './Copyright';
 
-```js tab="Tab 3"
-//Color.js
-export default function Color({value}) {
-  return <div className="colorbox" style={{backgroundColor: value}} />
-}
-```
+  export default function App() {
+    return (
+      <>
+        <FancyText title text="Get Inspired App" />
+        <InspirationGenerator>
+          <Copyright year={2004} />
+        </InspirationGenerator>
+      </>
+    );
+  }`,
+  },
+  {
+  tab: 'tsx2',
+  label: '',
+  filename: 'FaTex.js',
+  lang: 'tsx',
+  code: String.raw`export default function FancyText({title, text}) {
+    return title
+      ? <h1 className='fancy title'>{text}</h1>
+      : <h3 className='fancy cursive'>{text}</h3>
+  }`,
+  },
+  {
+  tab: 'tsx3',
+  label: '',
+  filename: 'Col.js',
+  lang: 'tsx',
+  code: String.raw`export default function Color({value}) {
+    return <div className="colorbox" style={{backgroundColor: value}} />
+  }`,
+  },
+  {
+  tab: 'tsx4',
+  label: '',
+  filename: 'InGen.js',
+  lang: 'tsx',
+  code: String.raw`import * as React from 'react';
+  import inspirations from './inspirations';
+  import FancyText from './FancyText';
+  import Color from './Color';
 
-```js tab="Tab 4"
-//InspirationGenerator.js
-import * as React from 'react';
-import inspirations from './inspirations';
-import FancyText from './FancyText';
-import Color from './Color';
+  export default function InspirationGenerator({children}) {
+    const [index, setIndex] = React.useState(0);
+    const inspiration = inspirations[index];
+    const next = () => setIndex((index + 1) % inspirations.length);
 
-export default function InspirationGenerator({children}) {
-  const [index, setIndex] = React.useState(0);
-  const inspiration = inspirations[index];
-  const next = () => setIndex((index + 1) % inspirations.length);
+    return (
+      <>
+        <p>Your inspirational {inspiration.type} is:</p>
+        {inspiration.type === 'quote'
+        ? <FancyText text={inspiration.value} />
+        : <Color value={inspiration.value} />}
 
-  return (
-    <>
-      <p>Your inspirational {inspiration.type} is:</p>
-      {inspiration.type === 'quote'
-      ? <FancyText text={inspiration.value} />
-      : <Color value={inspiration.value} />}
-
-      <button onClick={next}>Inspire me again</button>
-      {children}
-    </>
-  );
-}
-```
-
-```js tab="Tab 5"
-//Copyright.js
-export default function Copyright({year}) {
-  return <p className='small'>©️ {year}</p>;
-}
-```
-
-```js tab="Tab 6"
-//Inspirations.js
-export default [
-  {type: 'quote', value: "Don’t let yesterday take up too much of today.” — Will Rogers"},
-  {type: 'color', value: "#B73636"},
-  {type: 'quote', value: "Ambition is putting a ladder against the sky."},
-  {type: 'color', value: "#256266"},
-  {type: 'quote', value: "A joy that's shared is a joy made double."},
-  {type: 'color', value: "#F9F2B4"},
-];
-```
+        <button onClick={next}>Inspire me again</button>
+        {children}
+      </>
+    );
+  }`,
+  },
+  {
+  tab: 'tsx5',
+  label: '',
+  filename: 'Cprt.js',
+  lang: 'tsx',
+  code: String.raw`export default function Copyright({year}) {
+    return <p className='small'>©️ {year}</p>;
+  }`,
+  },
+  {
+  tab: 'tsx6',
+  label: '',
+  filename: 'insp.js',
+  lang: 'tsx',
+  code: String.raw`export default [
+    {type: 'quote', value: "Don’t let yesterday take up too much of today.” — Will Rogers"},
+    {type: 'color', value: "#B73636"},
+    {type: 'quote', value: "Ambition is putting a ladder against the sky."},
+    {type: 'color', value: "#256266"},
+    {type: 'quote', value: "A joy that's shared is a joy made double."},
+    {type: 'color', value: "#F9F2B4"},
+  ];`,
+  },
+  ]}
+>
+  <Example38 />
+</ReactDevStyleExample>
 
 <img src="/images/conditional_render_tree.png" alt="1" style={{ height: 'auto' }} />
 
