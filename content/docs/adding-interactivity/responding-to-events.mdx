@@ -14,15 +14,16 @@ description: React позволяет добавлять обработчики 
 
 Чтобы добавить обработчик событий, сначала нужно определить функцию, а затем [передать ее в качестве проп](/learn/passing-props-to-a-component) соответствующему тегу JSX. Например, вот кнопка, которая пока ничего не делает:
 
-<Sandpack code={
-`export default function Button() {
-    return (
-      <button>
-        Я ничего не делаю
-      </button>
-    );
-  }`}
-/>
+
+```js
+export default function Button() {
+  return (
+    <button>
+      Я ничего не делаю
+    </button>
+  );
+}
+```
 
 Вы можете заставить ее отображать сообщение при нажатии пользователем, выполнив следующие три шага:
 
@@ -30,19 +31,20 @@ description: React позволяет добавлять обработчики 
 2. Реализуйте логику внутри этой функции (используйте `alert` для отображения сообщения).
 3. Добавьте `onClick={handleClick}` к JSX `<button>`.
 
-<Sandpack code={
-`export default function Button() {
-    function handleClick() {
-      alert('Вы нажали на меня!');
-    }
 
-    return (
-      <button onClick={handleClick}>
-        Нажмите на меня
-      </button>
-    );
-  }`}
-/>
+```js
+export default function Button() {
+  function handleClick() {
+    alert('Вы нажали на меня!');
+  }
+
+  return (
+    <button onClick={handleClick}>
+      Нажмите на меня
+    </button>
+  );
+}
+```
 
 Вы определили функцию `handleClick`, а затем [передали ее в качестве проп](/learn/passing-props-to-a-component) в `<button>`. `handleClick` — это **обработчик событий.** Функции-обработчики событий:
 
@@ -113,8 +115,21 @@ description: React позволяет добавлять обработчики 
 
 Поскольку обработчики событий объявляются внутри компонента, они имеют доступ к пропсам компонента. Вот кнопка, при нажатии которой отображается всплывающее окно с пропсом `message`:
 
-<Sandpack code={
-`function AlertButton({ message, children }) {
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example39 } from '../../../examples/example copy 39';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`function AlertButton({ message, children }) {
     return (
       <button onClick={() => alert(message)}>
         {children}
@@ -133,8 +148,12 @@ description: React позволяет добавлять обработчики 
         </AlertButton>
       </div>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example39 />
+</ReactDevStyleExample>
 
 Это позволяет этим двум кнопкам отображать разные сообщения. Попробуйте изменить передаваемые им сообщения.
 
@@ -144,45 +163,60 @@ description: React позволяет добавлять обработчики 
 
 Для этого передайте в качестве обработчика события проп, который компонент получает от своего родителя, следующим образом:
 
-```js tab="Tab 1"
-//App.js
-function Button({ onClick, children }) {
-  return (
-    <button onClick={onClick}>
-      {children}
-    </button>
-  );
-}
+import { Example46 } from '../../../examples/example copy 46';
 
-function PlayButton({ movieName }) {
-  function handlePlayClick() {
-    alert(`Playing ${movieName}!`);
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`function Button({ onClick, children }) {
+    return (
+      <button onClick={onClick}>
+        {children}
+      </button>
+    );
   }
 
-  return (
-    <Button onClick={handlePlayClick}>
-      Play "{movieName}"
-    </Button>
-  );
-}
+  function PlayButton({ movieName }) {
+    function handlePlayClick() {
+      alert(\`Playing \${movieName}!\`);
+    }
 
-function UploadButton() {
-  return (
-    <Button onClick={() => alert('Uploading!')}>
-      Upload Image
-    </Button>
-  );
-}
+    return (
+      <Button onClick={handlePlayClick}>
+        Play "{movieName}"
+      </Button>
+    );
+  }
 
-export default function Toolbar() {
-  return (
-    <div>
-      <PlayButton movieName="Kiki's Delivery Service" />
-      <UploadButton />
-    </div>
-  );
-}
-```
+  function UploadButton() {
+    return (
+      <Button onClick={() => alert('Uploading!')}>
+        Upload Image
+      </Button>
+    );
+  }
+
+  export default function Toolbar() {
+    return (
+      <div>
+        <PlayButton movieName="Kiki's Delivery Service" />
+        <UploadButton />
+      </div>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example46 />
+</ReactDevStyleExample>
 
 Здесь компонент `Toolbar` отображает `PlayButton` и `UploadButton`:
 
@@ -201,8 +235,18 @@ export default function Toolbar() {
 
 Например, проп `onClick` компонента `Button` можно было бы назвать `onSmash`:
 
-<Sandpack code={
-`function Button({ onSmash, children }) {
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`function Button({ onSmash, children }) {
     return (
       <button onClick={onSmash}>
         {children}
@@ -221,19 +265,33 @@ export default function Toolbar() {
         </Button>
       </div>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example39 />
+</ReactDevStyleExample>
 
 В этом примере `<button onClick={onSmash}>` показывает, что браузерному `<button>` (строчными буквами) по-прежнему нужен проп под названием `onClick`, но как назвать проп, который получает ваш пользовательский компонент `Button`, решать вам!
 
 Если ваш компонент поддерживает несколько взаимодействий, вы можете называть пропсы обработчиков событий в соответствии с концепциями конкретного приложения. Например, этот компонент `Toolbar` получает обработчики событий `onPlayMovie` и `onUploadImage`:
 
-<Sandpack code={
-`export default function App() {
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`export default function App() {
     return (
       <Toolbar
-        onPlayMovie={() => alert('Воспроизведение!')}
-        onUploadImage={() => alert('Загрузка!')}
+        onPlayMovie={() => alert('Playing!')}
+        onUploadImage={() => alert('Uploading!')}
       />
     );
   }
@@ -241,12 +299,11 @@ export default function Toolbar() {
   function Toolbar({ onPlayMovie, onUploadImage }) {
     return (
       <div>
-        
-  <Button onClick={onPlayMovie}>
-          Воспроизвести фильм
+        <Button onClick={onPlayMovie}>
+          Play Movie
         </Button>
         <Button onClick={onUploadImage}>
-          Загрузить изображение
+          Upload Image
         </Button>
       </div>
     );
@@ -255,12 +312,15 @@ export default function Toolbar() {
   function Button({ onClick, children }) {
     return (
       <button onClick={onClick}>
-        
-  {children}
+        {children}
       </button>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example39 />
+</ReactDevStyleExample>
   
 Обратите внимание, что компоненту `App` не нужно знать, *что* `Toolbar` будет делать с `onPlayMovie` или `onUploadImage`. Это деталь реализации `Toolbar`. Здесь `Toolbar` передает их в качестве обработчиков `onClick` своим `Button`-ам, но позже он также может запускать их с помощью сочетания клавиш. Названия пропсов, основанные на взаимодействиях, специфичных для приложения, таких как `onPlayMovie`, дают вам гибкость для изменения способа их использования в будущем.
 
@@ -274,22 +334,38 @@ export default function Toolbar() {
 
 Этот `<div>` содержит две кнопки. И `<div>`, *и* каждая кнопка имеют свои собственные обработчики `onClick`. Как вы думаете, какие обработчики сработают, когда вы нажмете на кнопку?
 
-<Sandpack code={
-`export default function Toolbar() {
+import { Example47 } from '../../../examples/example copy 47';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`export default function Toolbar() {
     return (
       <div className="Toolbar" onClick={() => {
-        alert ('Вы нажали на панель инструментов!');
+        alert('You clicked on the toolbar!');
       }}>
-        <button onClick={() => alert('Воспроизведение!')}>
-          Воспроизвести видео
+        <button onClick={() => alert('Playing!')}>
+          Play Movie
         </button>
-        <button onClick={() => alert('Загрузка!')}>
-          Загрузить изображение
+        <button onClick={() => alert('Uploading!')}>
+          Upload Image
         </button>
       </div>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example47 />
+</ReactDevStyleExample>
 
 Если вы нажмете на любую из кнопок, сначала сработает ее `onClick`, а затем — `onClick` родительского элемента `<div>`. Таким образом, появится два сообщения. Если вы нажмете на саму панель инструментов, сработает только `onClick` родительского элемента `<div>`.
 
@@ -303,12 +379,24 @@ export default function Toolbar() {
 
 Этот объект события также позволяет остановить распространение. Если вы хотите предотвратить передачу события родительским компонентам, вам нужно вызвать `e.stopPropagation()`, как это делает компонент `Button`:
 
-<Sandpack code={
-`function Button({ onClick, children }) {
+import { Example48 } from '../../../examples/example copy 48';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`function Button({ onClick, children }) {
     return (
       <button onClick={e => {
         e.stopPropagation();
-        onClick ();
+        onClick();
       }}>
         {children}
       </button>
@@ -318,18 +406,22 @@ export default function Toolbar() {
   export default function Toolbar() {
     return (
       <div className="Toolbar" onClick={() => {
-        alert('Вы нажали на панель инструментов!');
+        alert('You clicked on the toolbar!');
       }}>
-        <Button onClick={() => alert('Воспроизведение!')}>
-          Воспроизвести фильм
+        <Button onClick={() => alert('Playing!')}>
+          Play Movie
         </Button>
-        <Button onClick={() => alert('Загрузка!')}>
-          Загрузить изображение
+        <Button onClick={() => alert('Uploading!')}>
+          Upload Image
         </Button>
       </div>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example48 />
+</ReactDevStyleExample>
 
 Когда вы нажимаете на кнопку:
 
@@ -388,32 +480,64 @@ function Button({ onClick, children }) {
 
 Некоторые события браузера имеют связанное с ними поведение по умолчанию. Например, событие отправки `<form>`, которое происходит при нажатии кнопки внутри него, по умолчанию перезагрузит всю страницу:
 
-<Sandpack code={
-`export default function Signup() {
+import { Example49 } from '../../../examples/example copy 49';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={180}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`export default function Signup() {
     return (
-      <form onSubmit={() => alert('Отправляется!')}>
+      <form onSubmit={() => alert('Submitting!')}>
         <input />
-        <button>Отправить</button>
+        <button>Send</button>
       </form>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example49 />
+</ReactDevStyleExample>
 
 Вы можете вызвать `e.preventDefault()` на объекте события, чтобы предотвратить это:
 
-<Sandpack code={
-`export default function Signup() {
+import { Example50 } from '../../../examples/example copy 50';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={180}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`export default function Signup() {
     return (
       <form onSubmit={e => {
         e.preventDefault();
-        alert('Отправляется!');
+        alert('Submitting!');
       }}>
         <input />
-        <button>Отправить</button>
+        <button>Send</button>
       </form>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example50 />
+</ReactDevStyleExample>
 
 Не путайте `e.stopPropagation()` и `e.preventDefault()`. Обе функции полезны, но не связаны между собой:
 

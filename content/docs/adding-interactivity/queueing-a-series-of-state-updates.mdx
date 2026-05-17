@@ -14,8 +14,21 @@ description: Установка значения переменной состо
 
 Вы можете ожидать, что нажатие кнопки «+3» увеличит счетчик на три единицы, поскольку она вызывает `setNumber(number + 1)` три раза:
 
-<Sandpack code={
-`import { useState } from 'react';
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example58 } from '../../../examples/example copy 58';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   export default function Counter() {
     const [number, setNumber] = useState(0);
@@ -30,8 +43,12 @@ description: Установка значения переменной состо
         }}>+3</button>
       </>
     )
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example58 />
+</ReactDevStyleExample>
 
 Однако, как вы, возможно, помните из предыдущего раздела, [значения состояния при каждом рендере фиксированы](/learn/state-as-a-snapshot# rendering-takes-a-snapshot-in-time), поэтому значение `number` внутри обработчика событий первого рендеринга всегда равно `0`, независимо от того, сколько раз вы вызываете `setNumber(1)`:
 
@@ -59,11 +76,23 @@ setNumber(0 + 1);
 
 Попробуйте теперь увеличить счетчик:
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example59 } from '../../../examples/example copy 59';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   export default function Counter() {
-    const [number, setNumber] = useState (0);
+    const [number, setNumber] = useState(0);
 
     return (
       <>
@@ -75,8 +104,12 @@ setNumber(0 + 1);
         }}>+3</button>
       </>
     )
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example59 />
+</ReactDevStyleExample>
 
 Здесь `n => n + 1` называется **функцией обновления**. Когда вы передаете её в сеттер состояния:
 
@@ -117,10 +150,22 @@ React сохраняет `3` в качестве конечного резуль
 }}>
 ```
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example60 } from '../../../examples/example copy 60';
 
-  export default function Counter () {
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
+
+  export default function Counter() {
     const [number, setNumber] = useState(0);
 
     return (
@@ -129,11 +174,15 @@ React сохраняет `3` в качестве конечного резуль
         <button onClick={() => {
           setNumber(number + 5);
           setNumber(n => n + 1);
-        }}>Увеличить число</button>
+        }}>Increase the number</button>
       </>
     )
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example60 />
+</ReactDevStyleExample>
 
 Вот что этот обработчик событий указывает React:
 
@@ -165,8 +214,20 @@ React сохраняет `6` в качестве конечного резуль
 }}>
 ```
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example61 } from '../../../examples/example copy 61';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={280}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   export default function Counter() {
     const [number, setNumber] = useState(0);
@@ -178,11 +239,15 @@ React сохраняет `6` в качестве конечного резуль
           setNumber(number + 5);
           setNumber(n => n + 1);
           setNumber(42);
-        }}>Увеличить число</button>
+        }}>Increase the number</button>
       </>
     )
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example61 />
+</ReactDevStyleExample>
 
 Вот как React обрабатывает эти строки кода при выполнении этого обработчика событий:
 

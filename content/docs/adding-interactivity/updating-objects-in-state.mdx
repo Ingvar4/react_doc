@@ -49,42 +49,56 @@ position.x = 5;
 
 В этом примере в state хранится объект, представляющий текущее положение указателя. Красная точка должна перемещаться, когда вы касаетесь области предварительного просмотра или наводите на нее курсор. Но точка остается в исходном положении:
 
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example63 } from '../../../examples/example copy 63';
 
-```js
-import { useState } from 'react';
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-export default function MovingDot() {
-  const [position, setPosition] = useState({
-    x: 0,
-    y: 0
-  });
-  
-  return (
-    <div
-      onPointerMove={e => {
-        position.x = e.clientX;
-        position.y = e.clientY;
-      }}
-      style={{
-        position: 'relative',
-        width: '100vw',
-        height: '100vh',
-      }}>
-      <div style=
-      {{
-        position: 'absolute',
-        backgroundColor: 'red',
-        borderRadius: '50%',
-        transform: `translate(${position.x}px, ${position.y}px)`,
-        left: -10,
-        top: -10,
-        width: 20,
-        height: 20,
-      }} />
-    </div>
-  );
-}
-```
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
+
+  export default function MovingDot() {
+    const [position, setPosition] = useState({
+      x: 0,
+      y: 0
+    });
+    return (
+      <div
+        onPointerMove={e => {
+          position.x = e.clientX;
+          position.y = e.clientY;
+        }}
+        style={{
+          position: 'relative',
+          width: '100vw',
+          height: '100vh',
+        }}>
+        <div style={{
+          position: 'absolute',
+          backgroundColor: 'red',
+          borderRadius: '50%',
+          transform: \`translate(\${position.x}px, \${position.y}px)\`,
+          left: -10,
+          top: -10,
+          width: 20,
+          height: 20,
+        }} />
+      </div>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example63 />
+</ReactDevStyleExample>
 
 Проблема заключается в этом фрагменте кода.
 
@@ -115,42 +129,57 @@ onPointerMove={e => {
 
 Обратите внимание, как красная точка теперь следует за вашим указателем, когда вы касаетесь области предварительного просмотра или наводите на нее курсор:
 
+import { Example62 } from '../../../examples/example copy 62';
 
-```js
-import { useState } from 'react';
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-export default function MovingDot() {
-  const [position, setPosition] = useState({
-    x: 0,
-    y: 0
-  });
-  return (
-    <div
-      onPointerMove={e => {
-        setPosition({
-          x: e.clientX,
-          y: e.clientY
-        });
-      }}
-      style={{
-        position: 'relative',
-        width: '100vw',
-        height: '100vh',
-      }}>
-    <div style={{
-        position: 'absolute',
-        backgroundColor: 'red',
-        borderRadius: '50%',
-        transform: `translate(${position.x}px, ${position.y}px)`,
-        left: -10,
-        top: -10,
-        width: 20,
-        height: 20,
-      }} />
-    </div>
-  );
-}
-```
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
+
+  export default function MovingDot() {
+    const [position, setPosition] = useState({
+      x: 0,
+      y: 0
+    });
+    return (
+      <div
+        onPointerMove={e => {
+          setPosition({
+            x: e.clientX,
+            y: e.clientY
+          });
+        }}
+        style={{
+          position: 'relative',
+          width: '100vw',
+          height: '100vh',
+        }}>
+        <div style={{
+          position: 'absolute',
+          backgroundColor: 'red',
+          borderRadius: '50%',
+          transform: \`translate(\${position.x}px, \${position.y}px)\`,
+          left: -10,
+          top: -10,
+          width: 20,
+          height: 20,
+        }} />
+      </div>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example62 />
+</ReactDevStyleExample>
 
 <Callout type='idea'>
 
@@ -191,8 +220,20 @@ setPosition({
 Эти поля ввода не работают, потому что обработчики `onChange` изменяют состояние:
 
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example64 } from '../../../examples/example copy 64';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   export default function Form() {
     const [person, setPerson] = useState({
@@ -205,7 +246,7 @@ setPosition({
       person.firstName = e.target.value;
     }
 
-    function handleLastNameChange (e) {
+    function handleLastNameChange(e) {
       person.lastName = e.target.value;
     }
 
@@ -216,21 +257,21 @@ setPosition({
     return (
       <>
         <label>
-          Имя:
+          First name:
           <input
             value={person.firstName}
             onChange={handleFirstNameChange}
           />
         </label>
         <label>
-          Фамилия:
+          Last name:
           <input
             value={person.lastName}
             onChange={handleLastNameChange}
           />
         </label>
         <label>
-          Электронная почта:
+          Email:
           <input
             value={person.email}
             onChange={handleEmailChange}
@@ -243,8 +284,12 @@ setPosition({
         </p>
       </>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example64 />
+</ReactDevStyleExample>
 
 Например, эта строка изменяет состояние, полученное при предыдущем рендеринге:
 
@@ -275,10 +320,20 @@ setPerson({
 
 Обратите внимание, что вы не объявляли отдельную переменную состояния для каждого поля ввода. Для больших форм очень удобно хранить все данные, сгруппированные в одном объекте — при условии, что вы обновляете его правильно!
 
+import { Example65 } from '../../../examples/example copy 65';
 
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-<Sandpack code={
-`import { useState } from 'react';
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   export default function Form() {
     const [person, setPerson] = useState({
@@ -311,21 +366,21 @@ setPerson({
     return (
       <>
         <label>
-          Имя:
+          First name:
           <input
             value={person.firstName}
             onChange={handleFirstNameChange}
           />
         </label>
         <label>
-          Фамилия:
+          Last name:
           <input
             value={person.lastName}
             onChange={handleLastNameChange}
           />
         </label>
         <label>
-          Электронная почта:
+          Email:
           <input
             value={person.email}
             onChange={handleEmailChange}
@@ -338,8 +393,12 @@ setPerson({
         </p>
       </>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example65 />
+</ReactDevStyleExample>
 
 Обратите внимание, что синтаксис распространения `...` является 'неглубоким' — он копирует элементы только на один уровень вглубь. Это делает его быстрым, но также означает, что если вы хотите обновить вложенное свойство, вам придется использовать его более одного раза.
 
@@ -349,60 +408,58 @@ setPerson({
 
 Вы также можете использовать фигурные скобки `[` и `]` внутри определения объекта, чтобы указать свойство с динамическим именем. Вот тот же пример, но с одним обработчиком событий вместо трех разных:
 
+```js
+import { useState } from 'react';
 
-
-<Sandpack code={
-`import { useState } from 'react';
-
-  export default function Form() {
-    const [person, setPerson] = useState({
-      firstName: 'Barbara',
-      lastName: 'Hepworth',
-      email: 'bhepworth@sculpture.com'
+export default function Form() {
+  const [person, setPerson] = useState({
+    firstName: 'Barbara',
+    lastName: 'Hepworth',
+    email: 'bhepworth@sculpture.com'
+  });
+  
+function handleChange(e) {
+    setPerson({
+      ...person,
+      [e.target.name]: e.target.value
     });
-    
-  function handleChange(e) {
-      setPerson({
-        ...person,
-        [e.target.name]: e.target.value
-      });
-    }
-    
-    return (
-      <>
-        <label>
-          Имя:
-          <input
-            name="firstName"
-            value={person.firstName}
-            onChange={handleChange}
-          />
-        </label>
-        <label>
-          Фамилия:
-          <input
-            name='lastName'
-            value={person.lastName}
-            onChange={handleChange}
-          />
-        </label>
-        <label>
-          Электронная почта:
-          <input
-            name="email"
-            value={person.email}
-            onChange={handleChange}
-          />
-        </label>
-        <p>
-          {person.firstName}{' '}
-          {person.lastName}{' '}
-          ({person.email})
-        </p>
-      </>
-    );
-  }`}
-/>
+  }
+  
+  return (
+    <>
+      <label>
+        Имя:
+        <input
+          name="firstName"
+          value={person.firstName}
+          onChange={handleChange}
+        />
+      </label>
+      <label>
+        Фамилия:
+        <input
+          name='lastName'
+          value={person.lastName}
+          onChange={handleChange}
+        />
+      </label>
+      <label>
+        Электронная почта:
+        <input
+          name="email"
+          value={person.email}
+          onChange={handleChange}
+        />
+      </label>
+      <p>
+        {person.firstName}{' '}
+        {person.lastName}{' '}
+        ({person.email})
+      </p>
+    </>
+  );
+}
+```
 
 Здесь `e.target.name` относится к свойству `name`, присвоенному элементу DOM `<input>`.
 </Callout>
@@ -451,10 +508,20 @@ setPerson({
 
 Это получается немного многословно, но в большинстве случаев работает нормально:
 
+import { Example66 } from '../../../examples/example copy 66';
 
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-<Sandpack code={
-`import { useState } from 'react';
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   export default function Form() {
     const [person, setPerson] = useState({
@@ -492,7 +559,7 @@ setPerson({
         }
       });
     }
-    
+
     function handleImageChange(e) {
       setPerson({
         ...person,
@@ -506,39 +573,39 @@ setPerson({
     return (
       <>
         <label>
-          Имя:
+          Name:
           <input
             value={person.name}
             onChange={handleNameChange}
           />
         </label>
         <label>
-          Название:
-        <input
+          Title:
+          <input
             value={person.artwork.title}
             onChange={handleTitleChange}
           />
         </label>
         <label>
-          Город:
+          City:
           <input
             value={person.artwork.city}
             onChange={handleCityChange}
-        />
+          />
         </label>
         <label>
-          Изображение:
+          Image:
           <input
             value={person.artwork.image}
             onChange={handleImageChange}
           />
         </label>
         <p>
-        <i>{person.artwork.title}</i>
-          {' автор '}
+          <i>{person.artwork.title}</i>
+          {' by '}
           {person.name}
           <br />
-          (находится в {person.artwork.city})
+          (located in {person.artwork.city})
         </p>
         <img
           src={person.artwork.image}
@@ -546,8 +613,12 @@ setPerson({
         />
       </>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example66 />
+</ReactDevStyleExample>
 
 <Callout type='idea'>
 
