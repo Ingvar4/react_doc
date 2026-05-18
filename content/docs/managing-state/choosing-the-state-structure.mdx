@@ -45,41 +45,58 @@ const [position, setPosition] = useState({ x: 0, y: 0 });
 
 С технической точки зрения можно использовать любой из этих подходов. Но **если две переменные state всегда изменяются вместе, хорошей идеей может быть объединить их в одну переменную state.** Тогда вы не забудете постоянно поддерживать их в синхронизации, как в этом примере, где движение курсора обновляет обе координаты красной точки:
 
-```js
-import { useState } from 'react';
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example88 } from '../../../examples/example copy 88';
 
-export default function MovingDot() {
-  const [position, setPosition] = useState({
-    x: 0,
-    y: 0
-  });
-  return (
-    <div
-      onPointerMove={e => {
-        setPosition({
-          x: e.clientX,
-          y: e.clientY
-        });
-      }}
-      style={{
-        position: 'relative',
-        width: '100vw',
-        height: '100vh',
-      }}>
-      <div style={{
-        position: 'absolute',
-        backgroundColor: 'red',
-        borderRadius: '50%',
-        transform: `translate(${position.x}px, ${position.y}px)`,
-        left: -10,
-        top: -10,
-        width: 20,
-        height: 20,
-      }} />
-    </div>
-  )
-}
-```
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
+
+  export default function MovingDot() {
+    const [position, setPosition] = useState({
+      x: 0,
+      y: 0
+    });
+    return (
+      <div
+        onPointerMove={e => {
+          setPosition({
+            x: e.clientX,
+            y: e.clientY
+          });
+        }}
+        style={{
+          position: 'relative',
+          width: '100vw',
+          height: '100vh',
+        }}>
+        <div style={{
+          position: 'absolute',
+          backgroundColor: 'red',
+          borderRadius: '50%',
+          transform: \`translate(\${position.x}px, \${position.y}px)\`,
+          left: -10,
+          top: -10,
+          width: 20,
+          height: 20,
+        }} />
+      </div>
+    )
+  }`,
+  },
+  ]}
+>
+  <Example88 />
+</ReactDevStyleExample>
 
 Другой случай, когда данные лучше хранить в объекте или массиве, — это когда вы не знаете заранее, сколько именно частей state вам понадобится. Например, это полезно для формы, в которой пользователь может добавлять собственные поля.
 
@@ -93,8 +110,20 @@ export default function MovingDot() {
 
 Вот форма обратной связи для отеля с переменными state `isSending` и `isSent`:
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example89 } from '../../../examples/example copy 89';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   export default function FeedbackForm() {
     const [text, setText] = useState('');
@@ -138,15 +167,31 @@ export default function MovingDot() {
     return new Promise(resolve => {
       setTimeout(resolve, 2000);
     });
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example89 />
+</ReactDevStyleExample>
 
 Хотя этот код работает, он оставляет возможность для “невозможных” состояний. Например, если вы забудете вызвать `setIsSent` и `setIsSending` вместе, можно оказаться в ситуации, когда и `isSending`, и `isSent` одновременно равны `true`. Чем сложнее компонент, тем труднее понять, что именно произошло.
 
 **Поскольку `isSending` и `isSent` никогда не должны быть одновременно `true`, лучше заменить их одной переменной state `status`, которая может принимать одно из *трёх* допустимых значений:** `'typing'` (начальное), `'sending'` и `'sent'`:
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example90 } from '../../../examples/example copy 90';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   export default function FeedbackForm() {
     const [text, setText] = useState('');
@@ -191,8 +236,13 @@ export default function MovingDot() {
     return new Promise(resolve => {
       setTimeout(resolve, 2000);
     });
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example90 />
+</ReactDevStyleExample>
+
 
 Для удобства чтения вы всё ещё можете объявить некоторые константы:
 
@@ -209,8 +259,20 @@ const isSent = status === 'sent';
 
 Например, возьмём эту форму. Она работает, но сможете ли вы найти в ней избыточный state?
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example91 } from '../../../examples/example copy 91';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   export default function Form() {
     const [firstName, setFirstName] = useState('');
@@ -249,54 +311,76 @@ const isSent = status === 'sent';
         </p>
       </>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example91 />
+</ReactDevStyleExample>
+
 
 В этой форме три переменные state: `firstName`, `lastName` и `fullName`. Однако `fullName` избыточен. **Вы всегда можете вычислить `fullName` из `firstName` и `lastName` во время рендера, поэтому уберите его из state.**
 
 Вот как это можно сделать:
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example92 } from '../../../examples/example copy 92';
 
-export default function Form() {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-  const fullName = firstName + ' ' + lastName;
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
-  function handleFirstNameChange(e) {
-    setFirstName(e.target.value);
-  }
+  export default function Form() {
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
 
-  function handleLastNameChange(e) {
-    setLastName(e.target.value);
-  }
+    const fullName = firstName + ' ' + lastName;
 
-  return (
-    <>
-      <h2>Let’s check you in</h2>
-      <label>
-        First name:{' '}
-        <input
-          value={firstName}
-          onChange={handleFirstNameChange}
-        />
-      </label>
-      <label>
-        Last name:{' '}
-        <input
-          value={lastName}
-          onChange={handleLastNameChange}
-        />
-      </label>
-      <p>
-        Your ticket will be issued to: <b>{fullName}</b>
-      </p>
-    </>
-  );
-}`}
-/>
+    function handleFirstNameChange(e) {
+      setFirstName(e.target.value);
+    }
+
+    function handleLastNameChange(e) {
+      setLastName(e.target.value);
+    }
+
+    return (
+      <>
+        <h2>Let’s check you in</h2>
+        <label>
+          First name:{' '}
+          <input
+            value={firstName}
+            onChange={handleFirstNameChange}
+          />
+        </label>
+        <label>
+          Last name:{' '}
+          <input
+            value={lastName}
+            onChange={handleLastNameChange}
+          />
+        </label>
+        <p>
+          Your ticket will be issued to: <b>{fullName}</b>
+        </p>
+      </>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example92 />
+</ReactDevStyleExample>
+
 
 Здесь `fullName` — это *не* переменная state. Вместо этого она вычисляется во время рендера:
 
@@ -343,104 +427,148 @@ function Message({ initialColor }) {
 
 Этот компонент списка меню позволяет выбрать один дорожный перекус из нескольких:
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example93 } from '../../../examples/example copy 93';
 
-const initialItems = [
-  { title: 'pretzels', id: 0 },
-  { title: 'crispy seaweed', id: 1 },
-  { title: 'granola bar', id: 2 },
-];
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-export default function Menu() {
-  const [items, setItems] = useState(initialItems);
-  const [selectedItem, setSelectedItem] = useState(
-    items[0]
-  );
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
-  return (
-    <>
-      <h2>What's your travel snack?</h2>
-      <ul>
-        {items.map(item => (
-          <li key={item.id}>
-            {item.title}
-            {' '}
-            <button onClick={() => {
-              setSelectedItem(item);
-            }}>Choose</button>
-          </li>
-        ))}
-      </ul>
-      <p>You picked {selectedItem.title}.</p>
-    </>
-  );
-}`}
-/>
+  const initialItems = [
+    { title: 'pretzels', id: 0 },
+    { title: 'crispy seaweed', id: 1 },
+    { title: 'granola bar', id: 2 },
+  ];
+
+  export default function Menu() {
+    const [items, setItems] = useState(initialItems);
+    const [selectedItem, setSelectedItem] = useState(
+      items[0]
+    );
+
+    return (
+      <>
+        <h2>What's your travel snack?</h2>
+        <ul>
+          {items.map(item => (
+            <li key={item.id}>
+              {item.title}
+              {' '}
+              <button onClick={() => {
+                setSelectedItem(item);
+              }}>Choose</button>
+            </li>
+          ))}
+        </ul>
+        <p>You picked {selectedItem.title}.</p>
+      </>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example93 />
+</ReactDevStyleExample>
 
 Сейчас выбранный элемент хранится как объект в переменной state `selectedItem`. Однако это не очень удачно: **содержимое `selectedItem` — это тот же самый объект, что и один из элементов массива `items`.** То есть информация об элементе дублируется в двух местах.
 
 Почему это проблема? Давайте сделаем каждый элемент редактируемым:
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example94 } from '../../../examples/example copy 94';
 
-const initialItems = [
-  { title: 'pretzels', id: 0 },
-  { title: 'crispy seaweed', id: 1 },
-  { title: 'granola bar', id: 2 },
-];
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-export default function Menu() {
-  const [items, setItems] = useState(initialItems);
-  const [selectedItem, setSelectedItem] = useState(
-    items[0]
-  );
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
-  function handleItemChange(id, e) {
-    setItems(items.map(item => {
-      if (item.id === id) {
-        return {
-          ...item,
-          title: e.target.value,
-        };
-      } else {
-        return item;
-      }
-    }));
-  }
+  const initialItems = [
+    { title: 'pretzels', id: 0 },
+    { title: 'crispy seaweed', id: 1 },
+    { title: 'granola bar', id: 2 },
+  ];
 
-  return (
-    <>
-      <h2>What's your travel snack?</h2>
-      <ul>
-        {items.map((item, index) => (
-          <li key={item.id}>
-            <input
-              value={item.title}
-              onChange={e => {
-                handleItemChange(item.id, e)
-              }}
-            />
-            {' '}
-            <button onClick={() => {
-              setSelectedItem(item);
-            }}>Choose</button>
-          </li>
-        ))}
-      </ul>
-      <p>You picked {selectedItem.title}.</p>
-    </>
-  );
-}`}
-/>
+  export default function Menu() {
+    const [items, setItems] = useState(initialItems);
+    const [selectedItem, setSelectedItem] = useState(
+      items[0]
+    );
+
+    function handleItemChange(id, e) {
+      setItems(items.map(item => {
+        if (item.id === id) {
+          return {
+            ...item,
+            title: e.target.value,
+          };
+        } else {
+          return item;
+        }
+      }));
+    }
+
+    return (
+      <>
+        <h2>What's your travel snack?</h2>
+        <ul>
+          {items.map((item, index) => (
+            <li key={item.id}>
+              <input
+                value={item.title}
+                onChange={e => {
+                  handleItemChange(item.id, e)
+                }}
+              />
+              {' '}
+              <button onClick={() => {
+                setSelectedItem(item);
+              }}>Choose</button>
+            </li>
+          ))}
+        </ul>
+        <p>You picked {selectedItem.title}.</p>
+      </>
+    );
+  }`,
+  },
+  ]}
+>
+  <Example94 />
+</ReactDevStyleExample>
 
 Обратите внимание: если сначала нажать “Choose” у элемента, а *потом* отредактировать его, **поле ввода обновится, но надпись внизу не отразит изменения.** Это происходит потому, что у вас дублируется state, а `selectedItem` вы забыли обновить.
 
 Хотя можно было бы обновлять и `selectedItem`, более простой способ — убрать дублирование. В этом примере вместо объекта `selectedItem` (который дублирует объект внутри `items`) вы храните в state `selectedId`, а *затем* получаете `selectedItem`, выполняя поиск в массиве `items` по этому ID:
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example95 } from '../../../examples/example copy 95';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   const initialItems = [
     { title: 'pretzels', id: 0 },
@@ -491,8 +619,12 @@ export default function Menu() {
         <p>You picked {selectedItem.title}.</p>
       </>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example95 />
+</ReactDevStyleExample>
 
 Раньше state дублировался так:
 
@@ -512,243 +644,260 @@ export default function Menu() {
 
 Представьте план путешествия, состоящий из планет, континентов и стран. Может возникнуть соблазн структурировать его state с помощью вложенных объектов и массивов, как в этом примере:
 
+import { Example96 } from '../../../examples/example copy 96';
 
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-```js tab="Tab 1"
-import { useState } from 'react';
-import { initialTravelPlan } from './places.js';
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
+  import { initialTravelPlan } from './places.js';
 
-function PlaceTree({ place }) {
-  const childPlaces = place.childPlaces;
-  return (
-    <li>
-      {place.title}
-      {childPlaces.length > 0 && (
+  function PlaceTree({ place }) {
+    const childPlaces = place.childPlaces;
+    return (
+      <li>
+        {place.title}
+        {childPlaces.length > 0 && (
+          <ol>
+            {childPlaces.map(place => (
+              <PlaceTree key={place.id} place={place} />
+            ))}
+          </ol>
+        )}
+      </li>
+    );
+  }
+
+  export default function TravelPlan() {
+    const [plan, setPlan] = useState(initialTravelPlan);
+    const planets = plan.childPlaces;
+    return (
+      <>
+        <h2>Places to visit</h2>
         <ol>
-          {childPlaces.map(place => (
+          {planets.map(place => (
             <PlaceTree key={place.id} place={place} />
           ))}
         </ol>
-      )}
-    </li>
-  );
-}
-
-export default function TravelPlan() {
-  const [plan, setPlan] = useState(initialTravelPlan);
-  const planets = plan.childPlaces;
-  return (
-    <>
-      <h2>Places to visit</h2>
-      <ol>
-        {planets.map(place => (
-          <PlaceTree key={place.id} place={place} />
-        ))}
-      </ol>
-    </>
-  );
-}
-```
-```js tab="Tab 2"
-//places.js
-export const initialTravelPlan = {
-  id: 0,
-  title: '(Root)',
-  childPlaces: [{
-    id: 1,
-    title: 'Earth',
+      </>
+    );
+  }`,
+  },
+  {
+  tab: 'utils',
+  label: '',
+  filename: 'data.js',
+  lang: 'ts',
+  code: String.raw`export const initialTravelPlan = {
+    id: 0,
+    title: '(Root)',
     childPlaces: [{
-      id: 2,
-      title: 'Africa',
+      id: 1,
+      title: 'Earth',
       childPlaces: [{
-        id: 3,
-        title: 'Botswana',
+        id: 2,
+        title: 'Africa',
+        childPlaces: [{
+          id: 3,
+          title: 'Botswana',
+          childPlaces: []
+        }, {
+          id: 4,
+          title: 'Egypt',
+          childPlaces: []
+        }, {
+          id: 5,
+          title: 'Kenya',
+          childPlaces: []
+        }, {
+          id: 6,
+          title: 'Madagascar',
+          childPlaces: []
+        }, {
+          id: 7,
+          title: 'Morocco',
+          childPlaces: []
+        }, {
+          id: 8,
+          title: 'Nigeria',
+          childPlaces: []
+        }, {
+          id: 9,
+          title: 'South Africa',
+          childPlaces: []
+        }]
+      }, {
+        id: 10,
+        title: 'Americas',
+        childPlaces: [{
+          id: 11,
+          title: 'Argentina',
+          childPlaces: []
+        }, {
+          id: 12,
+          title: 'Brazil',
+          childPlaces: []
+        }, {
+          id: 13,
+          title: 'Barbados',
+          childPlaces: []
+        }, {
+          id: 14,
+          title: 'Canada',
+          childPlaces: []
+        }, {
+          id: 15,
+          title: 'Jamaica',
+          childPlaces: []
+        }, {
+          id: 16,
+          title: 'Mexico',
+          childPlaces: []
+        }, {
+          id: 17,
+          title: 'Trinidad and Tobago',
+          childPlaces: []
+        }, {
+          id: 18,
+          title: 'Venezuela',
+          childPlaces: []
+        }]
+      }, {
+        id: 19,
+        title: 'Asia',
+        childPlaces: [{
+          id: 20,
+          title: 'China',
+          childPlaces: []
+        }, {
+          id: 21,
+          title: 'India',
+          childPlaces: []
+        }, {
+          id: 22,
+          title: 'Singapore',
+          childPlaces: []
+        }, {
+          id: 23,
+          title: 'South Korea',
+          childPlaces: []
+        }, {
+          id: 24,
+          title: 'Thailand',
+          childPlaces: []
+        }, {
+          id: 25,
+          title: 'Vietnam',
+          childPlaces: []
+        }]
+      }, {
+        id: 26,
+        title: 'Europe',
+        childPlaces: [{
+          id: 27,
+          title: 'Croatia',
+          childPlaces: [],
+        }, {
+          id: 28,
+          title: 'France',
+          childPlaces: [],
+        }, {
+          id: 29,
+          title: 'Germany',
+          childPlaces: [],
+        }, {
+          id: 30,
+          title: 'Italy',
+          childPlaces: [],
+        }, {
+          id: 31,
+          title: 'Portugal',
+          childPlaces: [],
+        }, {
+          id: 32,
+          title: 'Spain',
+          childPlaces: [],
+        }, {
+          id: 33,
+          title: 'Turkey',
+          childPlaces: [],
+        }]
+      }, {
+        id: 34,
+        title: 'Oceania',
+        childPlaces: [{
+          id: 35,
+          title: 'Australia',
+          childPlaces: [],
+        }, {
+          id: 36,
+          title: 'Bora Bora (French Polynesia)',
+          childPlaces: [],
+        }, {
+          id: 37,
+          title: 'Easter Island (Chile)',
+          childPlaces: [],
+        }, {
+          id: 38,
+          title: 'Fiji',
+          childPlaces: [],
+        }, {
+          id: 39,
+          title: 'Hawaii (the USA)',
+          childPlaces: [],
+        }, {
+          id: 40,
+          title: 'New Zealand',
+          childPlaces: [],
+        }, {
+          id: 41,
+          title: 'Vanuatu',
+          childPlaces: [],
+        }]
+      }]
+    }, {
+      id: 42,
+      title: 'Moon',
+      childPlaces: [{
+        id: 43,
+        title: 'Rheita',
         childPlaces: []
       }, {
-        id: 4,
-        title: 'Egypt',
+        id: 44,
+        title: 'Piccolomini',
         childPlaces: []
       }, {
-        id: 5,
-        title: 'Kenya',
-        childPlaces: []
-      }, {
-        id: 6,
-        title: 'Madagascar',
-        childPlaces: []
-      }, {
-        id: 7,
-        title: 'Morocco',
-        childPlaces: []
-      }, {
-        id: 8,
-        title: 'Nigeria',
-        childPlaces: []
-      }, {
-        id: 9,
-        title: 'South Africa',
+        id: 45,
+        title: 'Tycho',
         childPlaces: []
       }]
     }, {
-      id: 10,
-      title: 'Americas',
+      id: 46,
+      title: 'Mars',
       childPlaces: [{
-        id: 11,
-        title: 'Argentina',
+        id: 47,
+        title: 'Corn Town',
         childPlaces: []
       }, {
-        id: 12,
-        title: 'Brazil',
+        id: 48,
+        title: 'Green Hill',
         childPlaces: []
-      }, {
-        id: 13,
-        title: 'Barbados',
-        childPlaces: []
-      }, {
-        id: 14,
-        title: 'Canada',
-        childPlaces: []
-      }, {
-        id: 15,
-        title: 'Jamaica',
-        childPlaces: []
-      }, {
-        id: 16,
-        title: 'Mexico',
-        childPlaces: []
-      }, {
-        id: 17,
-        title: 'Trinidad and Tobago',
-        childPlaces: []
-      }, {
-        id: 18,
-        title: 'Venezuela',
-        childPlaces: []
-      }]
-    }, {
-      id: 19,
-      title: 'Asia',
-      childPlaces: [{
-        id: 20,
-        title: 'China',
-        childPlaces: []
-      }, {
-        id: 21,
-        title: 'India',
-        childPlaces: []
-      }, {
-        id: 22,
-        title: 'Singapore',
-        childPlaces: []
-      }, {
-        id: 23,
-        title: 'South Korea',
-        childPlaces: []
-      }, {
-        id: 24,
-        title: 'Thailand',
-        childPlaces: []
-      }, {
-        id: 25,
-        title: 'Vietnam',
-        childPlaces: []
-      }]
-    }, {
-      id: 26,
-      title: 'Europe',
-      childPlaces: [{
-        id: 27,
-        title: 'Croatia',
-        childPlaces: [],
-      }, {
-        id: 28,
-        title: 'France',
-        childPlaces: [],
-      }, {
-        id: 29,
-        title: 'Germany',
-        childPlaces: [],
-      }, {
-        id: 30,
-        title: 'Italy',
-        childPlaces: [],
-      }, {
-        id: 31,
-        title: 'Portugal',
-        childPlaces: [],
-      }, {
-        id: 32,
-        title: 'Spain',
-        childPlaces: [],
-      }, {
-        id: 33,
-        title: 'Turkey',
-        childPlaces: [],
-      }]
-    }, {
-      id: 34,
-      title: 'Oceania',
-      childPlaces: [{
-        id: 35,
-        title: 'Australia',
-        childPlaces: [],
-      }, {
-        id: 36,
-        title: 'Bora Bora (French Polynesia)',
-        childPlaces: [],
-      }, {
-        id: 37,
-        title: 'Easter Island (Chile)',
-        childPlaces: [],
-      }, {
-        id: 38,
-        title: 'Fiji',
-        childPlaces: [],
-      }, {
-        id: 39,
-        title: 'Hawaii (the USA)',
-        childPlaces: [],
-      }, {
-        id: 40,
-        title: 'New Zealand',
-        childPlaces: [],
-      }, {
-        id: 41,
-        title: 'Vanuatu',
-        childPlaces: [],
       }]
     }]
-  }, {
-    id: 42,
-    title: 'Moon',
-    childPlaces: [{
-      id: 43,
-      title: 'Rheita',
-      childPlaces: []
-    }, {
-      id: 44,
-      title: 'Piccolomini',
-      childPlaces: []
-    }, {
-      id: 45,
-      title: 'Tycho',
-      childPlaces: []
-    }]
-  }, {
-    id: 46,
-    title: 'Mars',
-    childPlaces: [{
-      id: 47,
-      title: 'Corn Town',
-      childPlaces: []
-    }, {
-      id: 48,
-      title: 'Green Hill',
-      childPlaces: []
-    }]
-  }]
-};
-```
+  };`,
+  },
+  ]}
+>
+  <Example96 />
+</ReactDevStyleExample>
 
 Теперь предположим, что вы хотите добавить кнопку для удаления уже посещённого места. Как бы вы это сделали? [Обновление вложенного state](/learn/updating-objects-in-state#updating-a-nested-object) требует создания копий объектов вплоть до изменённой части. Удаление глубоко вложенного места потребует копирования всей цепочки его родительских объектов. Такой код может быть очень громоздким.
 

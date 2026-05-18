@@ -151,48 +151,76 @@ React был создан для решения этой проблемы.
 
 Так же, как и дизайнер, вам захочется создать 'макет' или 'мокапы' для разных состояний, прежде чем добавлять логику. Например, вот макет только визуальной части формы. Этот макет управляется проп `status` со значением по умолчанию `'empty'`:
 
-<Sandpack code={
-`export default function Form({
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example85 } from '../../../examples/example copy 85';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`export default function Form({
     status = 'empty'
   }) {
     if (status === 'success') {
-      return <h1>Правильно!</h1>
+      return <h1>That's right!</h1>
     }
     return (
       <>
-        <h2>Викторина о городах</h2>
+        <h2>City quiz</h2>
         <p>
-          В каком городе есть рекламный щит, который превращает воздух в питьевую воду?
+          In which city is there a billboard that turns air into drinkable water?
         </p>
         <form>
           <textarea />
           <br />
           <button>
-            Отправить
+            Submit
           </button>
         </form>
       </>
     )
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example85 />
+</ReactDevStyleExample>
 
 Вы можете назвать этот проп как угодно, название не имеет значения. Попробуйте изменить `status = 'empty'` на `status = 'success'`, чтобы увидеть сообщение об успешном выполнении. Мокап позволяет быстро тестировать интерфейс, прежде чем подключать какую-либо логику. Вот более проработанный прототип того же компонента, по-прежнему ' 
 управляемый' проп `status`:
 
-<Sandpack code={
-`export default function Form({
-    // Попробуем 'submitting', 'error', 'success':
+import { Example86 } from '../../../examples/example copy 86';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`export default function Form({
+    // Try 'submitting', 'error', 'success':
     status = 'empty'
   }) {
     if (status === 'success') {
-      
-  return <h1>Правильно!</h1>
+      return <h1>That's right!</h1>
     }
     return (
       <>
-        <h2>Викторина по городам</h2>
+        <h2>City quiz</h2>
         <p>
-          В каком городе есть рекламный щит, который превращает воздух в питьевую воду?
+          In which city is there a billboard that turns air into drinkable water?
         </p>
         <form>
           <textarea disabled={
@@ -203,18 +231,22 @@ React был создан для решения этой проблемы.
             status === 'empty' ||
             status === 'submitting'
           }>
-            Отправить
+            Submit
           </button>
           {status === 'error' &&
             <p className="Error">
-              Хорошее предположение, но ответ неверный. Попробуй еще раз!
+              Good guess but a wrong answer. Try again!
             </p>
           }
         </form>
         </>
     );
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example86 />
+</ReactDevStyleExample>
 
 <Callout type='idea'>
 
@@ -362,20 +394,31 @@ const [status, setStatus] = useState('typing'); // 'typing', 'submitting' или
 
 Наконец, создайте обработчики событий, которые обновляют состояние. Ниже приведен окончательный вид кода со всеми подключенными обработчиками событий:
 
-<Sandpack code={
-`import { useState } from 'react';
+import { Example87 } from '../../../examples/example copy 87';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
 
   export default function Form() {
     const [answer, setAnswer] = useState('');
-    
-  const [error, setError] = useState(null);
+    const [error, setError] = useState(null);
     const [status, setStatus] = useState('typing');
 
     if (status === 'success') {
-      return <h1>Правильно!</h1>
+      return <h1>That's right!</h1>
     }
-    
-  async function handleSubmit(e) {
+
+    async function handleSubmit(e) {
       e.preventDefault();
       setStatus('submitting');
       try {
@@ -387,15 +430,15 @@ const [status, setStatus] = useState('typing'); // 'typing', 'submitting' или
       }
     }
 
-    function handleTextareaChange (e) {
+    function handleTextareaChange(e) {
       setAnswer(e.target.value);
     }
 
     return (
       <>
-        <h2>Викторина по городам</h2>
+        <h2>City quiz</h2>
         <p>
-          В каком городе есть рекламный щит, который превращает воздух в питьевую воду?
+          In which city is there a billboard that turns air into drinkable water?
         </p>
         <form onSubmit={handleSubmit}>
           <textarea
@@ -408,7 +451,7 @@ const [status, setStatus] = useState('typing'); // 'typing', 'submitting' или
             answer.length === 0 ||
             status === 'submitting'
           }>
-            Отправить
+            Submit
           </button>
           {error !== null &&
             <p className="Error">
@@ -421,19 +464,23 @@ const [status, setStatus] = useState('typing'); // 'typing', 'submitting' или
   }
 
   function submitForm(answer) {
-    // Предположим, что происходит подключение к сети.
+    // Pretend it's hitting the network.
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         let shouldError = answer.toLowerCase() !== 'lima'
         if (shouldError) {
-          reject(new Error('Хорошее предположение, но ответ неверный. Попробуйте еще раз!'));
+          reject(new Error('Good guess but a wrong answer. Try again!'));
         } else {
           resolve();
         }
       }, 1500);
     });
-  }`}
-/>
+  }`,
+  },
+  ]}
+>
+  <Example87 />
+</ReactDevStyleExample>
 
 Хотя этот код длиннее, чем исходный императивный пример, он гораздо менее уязвим. Выражение всех взаимодействий в виде изменений состояния позволяет впоследствии вводить новые визуальные состояния, не нарушая существующих. Это также позволяет изменять то, что должно отображаться в каждом состоянии, не меняя логику самого взаимодействия.
 
