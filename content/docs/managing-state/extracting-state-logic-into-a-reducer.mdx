@@ -17,163 +17,78 @@ description: Компоненты с множеством обновлений s
 
 По мере усложнения компонентов становится труднее с первого взгляда понять все разные способы, которыми обновляется state компонента. Например, компонент `TaskApp` ниже хранит в state массив `tasks` и использует три разных обработчика событий для добавления, удаления и редактирования задач:
 
-```js tab="Tab 1"
-//App.js
-import { useState } from 'react';
-import AddTask from './AddTask.js';
-import TaskList from './TaskList.js';
+import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
+import { Example102 } from '../../../examples/example copy 102';
 
-export default function TaskApp() {
-  const [tasks, setTasks] = useState(initialTasks);
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-  function handleAddTask(text) {
-    setTasks([
-      ...tasks,
-      {
-        id: nextId++,
-        text: text,
-        done: false,
-      },
-    ]);
-  }
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useState } from 'react';
+  import AddTask from './AddTask.js';
+  import TaskList from './TaskList.js';
 
-  function handleChangeTask(task) {
-    setTasks(
-      tasks.map((t) => {
-        if (t.id === task.id) {
-          return task;
-        } else {
-          return t;
-        }
-      })
-    );
-  }
+  export default function TaskApp() {
+    const [tasks, setTasks] = useState(initialTasks);
 
-  function handleDeleteTask(taskId) {
-    setTasks(tasks.filter((t) => t.id !== taskId));
-  }
+    function handleAddTask(text) {
+      setTasks([
+        ...tasks,
+        {
+          id: nextId++,
+          text: text,
+          done: false,
+        },
+      ]);
+    }
 
-  return (
-    <>
-      <h1>Prague itinerary</h1>
-      <AddTask onAddTask={handleAddTask} />
-      <TaskList
-        tasks={tasks}
-        onChangeTask={handleChangeTask}
-        onDeleteTask={handleDeleteTask}
-      />
-    </>
-  );
-}
+    function handleChangeTask(task) {
+      setTasks(
+        tasks.map((t) => {
+          if (t.id === task.id) {
+            return task;
+          } else {
+            return t;
+          }
+        })
+      );
+    }
 
-let nextId = 3;
-const initialTasks = [
-  {id: 0, text: 'Visit Kafka Museum', done: true},
-  {id: 1, text: 'Watch a puppet show', done: false},
-  {id: 2, text: 'Lennon Wall pic', done: false},
-];
-```
+    function handleDeleteTask(taskId) {
+      setTasks(tasks.filter((t) => t.id !== taskId));
+    }
 
-```js tab="Tab 2"
-//AddTask.js hidden
-import { useState } from 'react';
-
-export default function AddTask({onAddTask}) {
-  const [text, setText] = useState('');
-  return (
-    <>
-      <input
-        placeholder="Add task"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
-      <button
-        onClick={() => {
-          setText('');
-          onAddTask(text);
-        }}>
-        Add
-      </button>
-    </>
-  );
-}
-```
-
-```js tab="Tab 3"
-//TaskList.js hidden
-import { useState } from 'react';
-
-export default function TaskList({tasks, onChangeTask, onDeleteTask}) {
-  return (
-    <ul>
-      {tasks.map((task) => (
-        <li key={task.id}>
-          <Task task={task} onChange={onChangeTask} onDelete={onDeleteTask} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Task({task, onChange, onDelete}) {
-  const [isEditing, setIsEditing] = useState(false);
-  let taskContent;
-  if (isEditing) {
-    taskContent = (
+    return (
       <>
-        <input
-          value={task.text}
-          onChange={(e) => {
-            onChange({
-              ...task,
-              text: e.target.value,
-            });
-          }}
+        <h1>Prague itinerary</h1>
+        <AddTask onAddTask={handleAddTask} />
+        <TaskList
+          tasks={tasks}
+          onChangeTask={handleChangeTask}
+          onDeleteTask={handleDeleteTask}
         />
-        <button onClick={() => setIsEditing(false)}>Save</button>
-      </>
-    );
-  } else {
-    taskContent = (
-      <>
-        {task.text}
-        <button onClick={() => setIsEditing(true)}>Edit</button>
       </>
     );
   }
-  return (
-    <label>
-      <input
-        type="checkbox"
-        checked={task.done}
-        onChange={(e) => {
-          onChange({
-            ...task,
-            done: e.target.checked,
-          });
-        }}
-      />
-      {taskContent}
-      <button onClick={() => onDelete(task.id)}>Delete</button>
-    </label>
-  );
-}
-```
 
-```js tab="Tab 4"
-//css
-button {
-  margin: 5px;
-}
-li {
-  list-style-type: none;
-}
-ul,
-li {
-  margin: 0;
-  padding: 0;
-}
-```
+  let nextId = 3;
+  const initialTasks = [
+    {id: 0, text: 'Visit Kafka Museum', done: true},
+    {id: 1, text: 'Watch a puppet show', done: false},
+    {id: 2, text: 'Lennon Wall pic', done: false},
+  ];`,
+  },
+  ]}
+>
+  <Example102 />
+</ReactDevStyleExample>
 
 Каждый из обработчиков событий вызывает `setTasks`, чтобы обновить state. По мере роста компонента растёт и количество логики state, разбросанной по нему. Чтобы уменьшить сложность и держать всю логику в одном удобном месте, можно вынести эту логику state в одну функцию вне компонента, **называемую "reducer"**.
 
