@@ -401,377 +401,205 @@ Hook `useReducer` принимает два аргумента:
 
 Теперь всё подключено полностью! Здесь reducer объявлен внизу файла компонента:
 
-```js tab="Tab 1"
-//App.js
-import { useReducer } from 'react';
-import AddTask from './AddTask.js';
-import TaskList from './TaskList.js';
+import { Example103 } from '../../../examples/example copy 103';
 
-export default function TaskApp() {
-  const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-  function handleAddTask(text) {
-    dispatch({
-      type: 'added',
-      id: nextId++,
-      text: text,
-    });
-  }
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useReducer } from 'react';
+  import AddTask from './AddTask.js';
+  import TaskList from './TaskList.js';
 
-  function handleChangeTask(task) {
-    dispatch({
-      type: 'changed',
-      task: task,
-    });
-  }
+  export default function TaskApp() {
+    const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
 
-  function handleDeleteTask(taskId) {
-    dispatch({
-      type: 'deleted',
-      id: taskId,
-    });
-  }
-
-  return (
-    <>
-      <h1>Prague itinerary</h1>
-      <AddTask onAddTask={handleAddTask} />
-      <TaskList
-        tasks={tasks}
-        onChangeTask={handleChangeTask}
-        onDeleteTask={handleDeleteTask}
-      />
-    </>
-  );
-}
-
-function tasksReducer(tasks, action) {
-  switch (action.type) {
-    case 'added': {
-      return [
-        ...tasks,
-        {
-          id: action.id,
-          text: action.text,
-          done: false,
-        },
-      ];
-    }
-    case 'changed': {
-      return tasks.map((t) => {
-        if (t.id === action.task.id) {
-          return action.task;
-        } else {
-          return t;
-        }
+    function handleAddTask(text) {
+      dispatch({
+        type: 'added',
+        id: nextId++,
+        text: text,
       });
     }
-    case 'deleted': {
-      return tasks.filter((t) => t.id !== action.id);
+
+    function handleChangeTask(task) {
+      dispatch({
+        type: 'changed',
+        task: task,
+      });
     }
-    default: {
-      throw Error('Unknown action: ' + action.type);
+
+    function handleDeleteTask(taskId) {
+      dispatch({
+        type: 'deleted',
+        id: taskId,
+      });
     }
-  }
-}
 
-let nextId = 3;
-const initialTasks = [
-  {id: 0, text: 'Visit Kafka Museum', done: true},
-  {id: 1, text: 'Watch a puppet show', done: false},
-  {id: 2, text: 'Lennon Wall pic', done: false},
-];
-```
-
-```js tab="Tab 2"
-//AddTask.js hidden
-import { useState } from 'react';
-
-export default function AddTask({onAddTask}) {
-  const [text, setText] = useState('');
-  return (
-    <>
-      <input
-        placeholder="Add task"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
-      <button
-        onClick={() => {
-          setText('');
-          onAddTask(text);
-        }}>
-        Add
-      </button>
-    </>
-  );
-}
-```
-
-```js tab="Tab 3"
-//TaskList.js hidden
-import { useState } from 'react';
-
-export default function TaskList({tasks, onChangeTask, onDeleteTask}) {
-  return (
-    <ul>
-      {tasks.map((task) => (
-        <li key={task.id}>
-          <Task task={task} onChange={onChangeTask} onDelete={onDeleteTask} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Task({task, onChange, onDelete}) {
-  const [isEditing, setIsEditing] = useState(false);
-  let taskContent;
-  if (isEditing) {
-    taskContent = (
+    return (
       <>
-        <input
-          value={task.text}
-          onChange={(e) => {
-            onChange({
-              ...task,
-              text: e.target.value,
-            });
-          }}
+        <h1>Prague itinerary</h1>
+        <AddTask onAddTask={handleAddTask} />
+        <TaskList
+          tasks={tasks}
+          onChangeTask={handleChangeTask}
+          onDeleteTask={handleDeleteTask}
         />
-        <button onClick={() => setIsEditing(false)}>Save</button>
-      </>
-    );
-  } else {
-    taskContent = (
-      <>
-        {task.text}
-        <button onClick={() => setIsEditing(true)}>Edit</button>
       </>
     );
   }
-  return (
-    <label>
-      <input
-        type="checkbox"
-        checked={task.done}
-        onChange={(e) => {
-          onChange({
-            ...task,
-            done: e.target.checked,
-          });
-        }}
-      />
-      {taskContent}
-      <button onClick={() => onDelete(task.id)}>Delete</button>
-    </label>
-  );
-}
-```
 
-```js tab="Tab 4"
-//css
-button {
-  margin: 5px;
-}
-li {
-  list-style-type: none;
-}
-ul,
-li {
-  margin: 0;
-  padding: 0;
-}
-```
+  function tasksReducer(tasks, action) {
+    switch (action.type) {
+      case 'added': {
+        return [
+          ...tasks,
+          {
+            id: action.id,
+            text: action.text,
+            done: false,
+          },
+        ];
+      }
+      case 'changed': {
+        return tasks.map((t) => {
+          if (t.id === action.task.id) {
+            return action.task;
+          } else {
+            return t;
+          }
+        });
+      }
+      case 'deleted': {
+        return tasks.filter((t) => t.id !== action.id);
+      }
+      default: {
+        throw Error('Unknown action: ' + action.type);
+      }
+    }
+  }
+
+  let nextId = 3;
+  const initialTasks = [
+    {id: 0, text: 'Visit Kafka Museum', done: true},
+    {id: 1, text: 'Watch a puppet show', done: false},
+    {id: 2, text: 'Lennon Wall pic', done: false},
+  ];`,
+  },
+  ]}
+>
+  <Example103 />
+</ReactDevStyleExample>
 
 При желании вы можете даже вынести reducer в отдельный файл:
 
-```js tab="Tab 1"
-//App.js
-import { useReducer } from 'react';
-import AddTask from './AddTask.js';
-import TaskList from './TaskList.js';
-import tasksReducer from './tasksReducer.js';
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={380}
+  files={[
 
-export default function TaskApp() {
-  const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useReducer } from 'react';
+  import AddTask from './AddTask.js';
+  import TaskList from './TaskList.js';
+  import tasksReducer from './tasksReducer.js';
 
-  function handleAddTask(text) {
-    dispatch({
-      type: 'added',
-      id: nextId++,
-      text: text,
-    });
-  }
+  export default function TaskApp() {
+    const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
 
-  function handleChangeTask(task) {
-    dispatch({
-      type: 'changed',
-      task: task,
-    });
-  }
-
-  function handleDeleteTask(taskId) {
-    dispatch({
-      type: 'deleted',
-      id: taskId,
-    });
-  }
-
-  return (
-    <>
-      <h1>Prague itinerary</h1>
-      <AddTask onAddTask={handleAddTask} />
-      <TaskList
-        tasks={tasks}
-        onChangeTask={handleChangeTask}
-        onDeleteTask={handleDeleteTask}
-      />
-    </>
-  );
-}
-
-let nextId = 3;
-const initialTasks = [
-  {id: 0, text: 'Visit Kafka Museum', done: true},
-  {id: 1, text: 'Watch a puppet show', done: false},
-  {id: 2, text: 'Lennon Wall pic', done: false},
-];
-```
-
-```js tab="Tab 2"
-//tasksReducer.js
-export default function tasksReducer(tasks, action) {
-  switch (action.type) {
-    case 'added': {
-      return [
-        ...tasks,
-        {
-          id: action.id,
-          text: action.text,
-          done: false,
-        },
-      ];
-    }
-    case 'changed': {
-      return tasks.map((t) => {
-        if (t.id === action.task.id) {
-          return action.task;
-        } else {
-          return t;
-        }
+    function handleAddTask(text) {
+      dispatch({
+        type: 'added',
+        id: nextId++,
+        text: text,
       });
     }
-    case 'deleted': {
-      return tasks.filter((t) => t.id !== action.id);
+
+    function handleChangeTask(task) {
+      dispatch({
+        type: 'changed',
+        task: task,
+      });
     }
-    default: {
-      throw Error('Unknown action: ' + action.type);
+
+    function handleDeleteTask(taskId) {
+      dispatch({
+        type: 'deleted',
+        id: taskId,
+      });
     }
-  }
-}
-```
 
-```js tab="Tab 3"
-//AddTask.js hidden
-import { useState } from 'react';
-
-export default function AddTask({onAddTask}) {
-  const [text, setText] = useState('');
-  return (
-    <>
-      <input
-        placeholder="Add task"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
-      <button
-        onClick={() => {
-          setText('');
-          onAddTask(text);
-        }}>
-        Add
-      </button>
-    </>
-  );
-}
-```
-
-```js tab="Tab 4"
-//TaskList.js hidden
-import { useState } from 'react';
-
-export default function TaskList({tasks, onChangeTask, onDeleteTask}) {
-  return (
-    <ul>
-      {tasks.map((task) => (
-        <li key={task.id}>
-          <Task task={task} onChange={onChangeTask} onDelete={onDeleteTask} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Task({task, onChange, onDelete}) {
-  const [isEditing, setIsEditing] = useState(false);
-  let taskContent;
-  if (isEditing) {
-    taskContent = (
+    return (
       <>
-        <input
-          value={task.text}
-          onChange={(e) => {
-            onChange({
-              ...task,
-              text: e.target.value,
-            });
-          }}
+        <h1>Prague itinerary</h1>
+        <AddTask onAddTask={handleAddTask} />
+        <TaskList
+          tasks={tasks}
+          onChangeTask={handleChangeTask}
+          onDeleteTask={handleDeleteTask}
         />
-        <button onClick={() => setIsEditing(false)}>Save</button>
-      </>
-    );
-  } else {
-    taskContent = (
-      <>
-        {task.text}
-        <button onClick={() => setIsEditing(true)}>Edit</button>
       </>
     );
   }
-  return (
-    <label>
-      <input
-        type="checkbox"
-        checked={task.done}
-        onChange={(e) => {
-          onChange({
-            ...task,
-            done: e.target.checked,
-          });
-        }}
-      />
-      {taskContent}
-      <button onClick={() => onDelete(task.id)}>Delete</button>
-    </label>
-  );
-}
-```
 
-```js tab="Tab 5"
-//css
-button {
-  margin: 5px;
-}
-li {
-  list-style-type: none;
-}
-ul,
-li {
-  margin: 0;
-  padding: 0;
-}
-```
+  let nextId = 3;
+  const initialTasks = [
+    {id: 0, text: 'Visit Kafka Museum', done: true},
+    {id: 1, text: 'Watch a puppet show', done: false},
+    {id: 2, text: 'Lennon Wall pic', done: false},
+  ];`,
+  },
+  {
+  tab: 'utils',
+  label: '',
+  filename: 'taskReducer.js',
+  lang: 'ts',
+  code: String.raw`export default function tasksReducer(tasks, action) {
+    switch (action.type) {
+      case 'added': {
+        return [
+          ...tasks,
+          {
+            id: action.id,
+            text: action.text,
+            done: false,
+          },
+        ];
+      }
+      case 'changed': {
+        return tasks.map((t) => {
+          if (t.id === action.task.id) {
+            return action.task;
+          } else {
+            return t;
+          }
+        });
+      }
+      case 'deleted': {
+        return tasks.filter((t) => t.id !== action.id);
+      }
+      default: {
+        throw Error('Unknown action: ' + action.type);
+      }
+    }
+  }`,
+  },
+  ]}
+>
+  <Example103 />
+</ReactDevStyleExample>
 
 Такое разделение часто делает логику компонента легче для чтения. Теперь обработчики событий только указывают _что произошло_, отправляя actions, а функция reducer определяет, _как state обновится_ в ответ на них.
 
