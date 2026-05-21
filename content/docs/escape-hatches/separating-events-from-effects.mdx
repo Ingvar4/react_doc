@@ -1,0 +1,884 @@
+---
+title: Разделение событий и эффектов
+description: Обработчики событий запускаются повторно только тогда, когда вы выполняете то же взаимодействие снова. В отличие от обработчиков событий, эффекты синхронизируются заново, если какое-либо значение, которое они считывают (например, проп или переменная состояния), отличается от того, что было во время последнего рендеринга. Иногда вам также может понадобиться сочетание обоих типов поведения- эффект, который запускается повторно в ответ на одни значения, но не на другие. На этой странице вы узнаете, как это сделать.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+
+- Как выбрать между обработчиком событий и эффектом
+- Почему эффекты являются реактивными, а обработчики событий — нет
+- Что делать, если вы хотите, чтобы часть кода вашего эффекта не была реактивной
+- Что такое события эффектов и как извлечь их из ваших эффектов
+- Как считывать последние пропсы и состояние из эффектов с помощью событий эффектов
+
+</Callout>
+
+## Выбор между обработчиками событий и эффектами {/*choosing-between-event-handlers-and-effects*/}
+
+Сначала давайте повторим разницу между обработчиками событий и эффектами.
+
+Представьте, что вы реализуете компонент чата. Ваши требования выглядят так:
+
+1. Ваш компонент должен автоматически подключаться к выбранному чату.
+1. При нажатии кнопки «Отправить» он должен отправить сообщение в чат.
+
+Допустим, вы уже реализовали код для них, но не уверены, куда его поместить. Стоит ли использовать обработчики событий или эффекты? Каждый раз, когда вам нужно ответить на этот вопрос, подумайте [*почему* код должен выполняться.] (/learn/synchronizing-with-effects#what-are-effects-and-how-are-they-different-from-events)
+
+### Обработчики событий запускаются в ответ на конкретные взаимодействия 
+
+С точки зрения пользователя отправка сообщения должна происходить *потому что* была нажата конкретная кнопка «Отправить». Пользователь будет весьма расстроен, если вы отправите его сообщение в любое другое время или по любой другой причине. Вот почему отправка сообщения должна быть обработчиком события. Обработчики событий позволяют обрабатывать конкретные взаимодействия:
+
+```js 
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+  // ...
+  function handleSendClick() {
+    sendMessage(message);
+  }
+  // ...
+  return (
+    <>
+      <input value={message} onChange={e => setMessage(e.target.value)} />
+      <button onClick={handleSendClick}>Отправить</button>
+    </>
+  );
+}
+```
+
+С помощью обработчика событий вы можете быть уверены, что `sendMessage(message)` будет выполняться *только* в том случае, если пользователь нажмет кнопку.
+
+### Эффекты запускаются всякий раз, когда требуется синхронизация {/*effects-run-whenever-synchronization-is-needed*/}
+
+Напомним, что вам также нужно поддерживать подключение компонента к чату. Куда поместить этот код?
+
+*Причина* запуска этого кода — не какое-то конкретное взаимодействие. Неважно, почему или как пользователь перешел на экран чата. Теперь, когда пользователь просматривает его и может взаимодействовать с ним, компонент должен оставаться подключенным к выбранному чат-серверу. Даже если компонент чата был начальным экраном вашего приложения, и пользователь не выполнял никаких действий, вам *все равно* нужно было бы подключиться. Вот почему это эффект:
+
+```js 
+function ChatRoom({ roomId }) {
+  // ...
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => {
+      connection.disconnect();
+    };
+  }, [roomId]);
+  // .. .
+}
+```
+
+С помощью этого кода вы можете быть уверены, что всегда будет активное соединение с текущим выбранным сервером чата, *независимо* от конкретных действий, выполняемых пользователем. Независимо от того, открыл ли пользователь только ваше приложение, выбрал другую комнату или перешел на другой экран и вернулся обратно, ваш эффект гарантирует, что компонент *останется синхронизированным* с текущей выбранной комнатой и [восстановит соединение, когда это необходимо.](/learn/lifecycle-of-reactive-effects#why-synchronization-may-need-to-happen-more-than-once)
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection, sendMessage } from './chat.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+
+  function handleSendClick () {
+    sendMessage(message);
+  }
+
+  return (
+    <>
+      <h1>Добро пожаловать в комнату {roomId}!</h1>
+      <input value={message} onChange={e => setMessage(e.target.value)} />
+      <button onClick={handleSendClick}>Отправить</button>
+    </>
+  );
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  const [show, setShow] = useState(false);
+  return (
+    <>
+      <label>
+        Выберите чат:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">общий</option>
+          <option value="travel">путешествия</option>
+          <option value="music">музыка</option>
+        </select>
+      </label>
+      <button onClick= {() => setShow(!show)}>
+        {show ? 'Закрыть чат' : 'Открыть чат'}
+      </button>
+      {show && <hr />}
+      {show && <ChatRoom roomId={roomId} />}
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function sendMessage(message) {
+  console.log('🔵
+ 
+Вы отправили: ' + message);
+}
+
+export function createConnection(serverUrl, roomId) {
+  // В реальной реализации здесь произошло бы подключение к серверу
+  return {
+    connect() {
+      console.log('✅ Подключение к комнате «' + roomId + '» по адресу ' + serverUrl + '...') ;
+    },
+    disconnect() {
+      console.log('❌ Отключено от комнаты «' + roomId + '» по адресу ' + serverUrl);
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+input, select { margin-right: 20px; }
+```
+
+## Реактивные значения и реактивная логика {/*reactive-values-and-reactive-logic*/}
+
+Интуитивно можно сказать, что обработчики событий всегда запускаются «вручную», например, при нажатии кнопки. Эффекты, с другой стороны, «автоматические»: они запускаются и перезапускаются столько раз, сколько необходимо для поддержания синхронизации.
+
+Существует более точный способ рассмотрения этого вопроса.
+
+Пропсы, состояние и переменные, объявленные внутри тела вашего компонента, называются реактивными значениями. В этом примере `serverUrl` не является реактивным значением, но `roomId` и `message` — да. Они участвуют в потоке данных рендеринга:
+
+```js
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+
+  // ...
+}
+```
+
+Такие реактивные значения могут изменяться в результате повторного рендеринга. Например, пользователь может отредактировать `message` или выбрать другой `roomId` в выпадающем списке. Обработчики событий и эффекты по-разному реагируют на изменения:
+
+- **Логика внутри обработчиков событий *не является реактивной.*** Она не будет запущена снова, пока пользователь не выполнит то же взаимодействие (например, клик) еще раз. Обработчики событий могут считывать реактивные значения, не «реагируя» на их изменения.
+- **Логика внутри эффектов *является реактивной.*** Если ваш эффект считывает реактивное значение, [вы должны указать его в качестве зависимости.](/learn/lifecycle-of-reactive-effects#effects-react-to-reactive-values). Тогда, если повторный рендеринг приведет к изменению этого значения, React запустит логику вашего эффекта с новым значением.
+
+Давайте вернемся к предыдущему примеру, чтобы проиллюстрировать это различие.
+
+### Логика внутри обработчиков событий не является реактивной {/*logic-inside-event-handlers-is-not-reactive*/}
+
+Посмотрите на эту строку кода. Должна ли эта логика быть реактивной или нет?
+
+```js
+    // ...
+    sendMessage(message);
+    // ...
+```
+
+С точки зрения пользователя **изменение `message` _не_ означает, что он хочет отправить сообщение.** Это означает только то, что пользователь печатает. Другими словами, логика, отправляющая сообщение, не должна быть реактивной. Она не должна запускаться снова только потому, что реактивное значение изменилось. Вот почему она должна находиться в обработчике событий:
+
+```js {2}
+  function handleSendClick() {
+    sendMessage(message);
+  }
+```
+
+Обработчики событий не являются реактивными, поэтому `sendMessage(message)` будет запускаться только тогда, когда пользователь нажмет кнопку «Отправить».
+
+### Логика внутри эффектов является реактивной {/*logic-inside-effects-is-reactive*/}
+
+Теперь вернёмся к этим строкам:
+
+```js
+    // ...
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    // ...
+```
+
+С точки зрения пользователя **изменение `roomId` *действительно* означает, что он хочет подключиться к другой комнате.** Другими словами, логика подключения к комнате должна быть реактивной. Вы *хотите*, чтобы эти строки кода «не отставали» от реактивного значения и запускаться заново, если это значение изменится. Вот почему оно должно находиться в эффекте:
+
+```js 
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => {
+      connection.disconnect()
+    };
+  }, [roomId]);
+```
+
+Эффекты являются реактивными, поэтому `createConnection(serverUrl, roomId)` и `connection.connect()` будут выполняться для каждого отдельного значения `roomId`. Ваш эффект синхронизирует соединение чата с текущей выбранной комнатой.
+
+## Извлечение нереактивной логики из эффектов
+
+Дела усложняются, когда вы хотите смешать реактивную логику с нереактивной.
+
+Например, представьте, что вы хотите показать уведомление, когда пользователь подключается к чату. Вы считываете текущую тему (темная или светлая) из props, чтобы показать уведомление в правильном цвете:
+
+```js 
+function ChatRoom({ roomId, theme }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+      connection.on('connected', () => {
+      showNotification('Connected!', theme);
+    });
+    connection.connect();
+    // ...
+```
+
+Однако `theme` является реактивным значением (оно может измениться в результате повторного рендеринга), и [каждое реактивное значение, считываемое эффектом, должно быть объявлено в качестве его зависимости.](/learn/lifecycle-of-reactive-effects#react-verifies-that-you-specified-every-reactive-value-as-a-dependency) Теперь вам необходимо указать `theme` в качестве зависимости вашего эффекта:
+
+```js
+function ChatRoom({ roomId, theme }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.on('connected', () => {
+      showNotification('Connected!' , theme);
+    });
+    connection.connect();
+    return () => {
+      connection.disconnect()
+    };
+  }, [roomId, theme]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Поэкспериментируйте с этим примером и попробуйте найти проблему в пользовательском интерфейсе:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection, sendMessage } from './chat.js';
+import { showNotification } from './notifications.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId, theme }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.on('connected', () => {
+      showNotification('Connected!', theme);
+    });
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId, theme]);
+
+  return <h1>Добро пожаловать в комнату {roomId}!</h1>
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  const [isDark, setIsDark] = useState(false);
+  return (
+    <>
+      <label>
+        Выберите чат-комнату:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">общий</option>
+          <option value="travel">путешествия</option>
+          <option value="music">музыка</option>
+        </select>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={isDark}
+          onChange={e => setIsDark(e.target.checked)}
+        />
+        Использовать темную тему
+      </label>
+      <hr />
+      <ChatRoom
+        roomId={roomId}
+        theme={isDark ? 'dark' : 'light'}
+      />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection(serverUrl, roomId) {
+  // В реальной реализации здесь произошло бы подключение к серверу
+  
+let connectedCallback;
+  let timeout;
+  return {
+    connect() {
+      timeout = setTimeout(() => {
+        if (connectedCallback) {
+          connectedCallback();
+        }
+      }, 100);
+    },
+    on(event, callback) {
+      if (connectedCallback) {
+        throw Error ('Нельзя добавить обработчик дважды.');
+      }
+      if (event !== 'connected') {
+        throw Error('Поддерживается только событие «connected».');
+      }
+      connectedCallback = callback;
+    },
+    disconnect() {
+      clearTimeout(timeout);
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+//notifications.js
+import Toastify from 'toastify-js';
+import 'toastify-js/src/toastify.css';
+
+export function showNotification(message, theme) {
+  Toastify({
+    text: message,
+    duration: 2000,
+    gravity: 'top',
+    position: 'right',
+    style: {
+      background: theme === 'dark' ? 'black' : 'white',
+      color: theme === 'dark' ? 'white' : 'black',
+    },
+  }).showToast();
+}
+```
+
+```js tab="Tab 4"
+
+label { display: block; margin-top: 10px; }
+```
+
+Когда `roomId` изменяется, чат переподключается, как и ожидалось. Но поскольку `theme` также является зависимостью, чат *также* переподключается каждый раз, когда вы переключаетесь между темной и светлой темой. Это не очень хорошо!
+
+Другими словами, вы *не* хотите, чтобы эта строка была реактивной, даже несмотря на то, что она находится внутри эффекта (который является реактивным):
+
+```js
+      // ...
+      showNotification('Connected!', theme);
+      // ...
+```
+
+Вам нужен способ отделить эту нереактивную логику от окружающего её реактивного эффекта.
+
+### Объявление события Effect {/*declaring-an-effect-event*/}
+
+Используйте специальный хук [`useEffectEvent`](/reference/react/useEffectEvent), чтобы извлечь эту нереактивную логику из вашего Effect:
+
+```js 
+import { useEffect, useEffectEvent } from 'react';
+
+function ChatRoom({ roomId, theme }) {
+  const onConnected = useEffectEvent(() => {
+    showNotification('Connected!', theme);
+  });
+  / / ...
+```
+
+Здесь `onConnected` называется *событием эффекта*. Оно является частью логики вашего эффекта, но ведет себя скорее как обработчик событий. Логика внутри него не является реактивной, и оно всегда «видит» последние значения ваших пропсов и состояния.
+
+Теперь вы можете вызвать событие эффекта `onConnected` изнутри вашего эффекта:
+
+```js 
+function ChatRoom({ roomId, theme }) {
+  const onConnected = useEffectEvent(() => {
+    showNotification('Connected!', theme);
+  });
+
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.on('connected', () => {
+      onConnected();
+    });
+    connection.connect();
+    
+return () => connection.disconnect();
+  }, [roomId]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Это решает проблему. Обратите внимание, что вам пришлось *удалить* `theme` из списка зависимостей вашего эффекта, поскольку он больше не используется в эффекте. Вам также не нужно *добавлять* `onConnected` в него, поскольку **события эффектов не являются реактивными и должны быть исключены из зависимостей.**
+
+Убедитесь, что новое поведение работает так, как вы ожидаете:
+
+```js tab="Tab 1"
+
+import { useState, useEffect } from 'react';
+import { useEffectEvent } from 'react';
+import { createConnection, sendMessage } from './chat.js';
+import { showNotification } from './notifications.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom( { roomId, theme }) {
+  const onConnected = useEffectEvent(() => {
+    showNotification('Подключено!', theme);
+  });
+
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.on('connected', () => {
+      onConnected();
+    });
+    
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+
+  return <h1>Добро пожаловать в комнату {roomId}!</h1>
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  const [isDark, setIsDark] = useState(false);
+  
+return (
+    <>
+      <label>
+        Выберите чат-комнату:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={isDark}
+          onChange={e => setIsDark(e.target.checked)}
+        />
+        Использовать темную тему
+      </label>
+      <hr />
+      <ChatRoom
+        roomId={roomId}
+        theme={isDark ? ' dark' : 'light'}
+      />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection(serverUrl, roomId) {
+  // В реальной реализации здесь бы происходило подключение к серверу
+  let connectedCallback;
+  let timeout;
+  return {
+    connect() {
+      timeout = setTimeout( () => {
+        if (connectedCallback) {
+          connectedCallback();
+        }
+      }, 100);
+    },
+    on(event, callback) {
+      if (connectedCallback) {
+        throw Error('Нельзя добавить обработчик дважды.');
+      }
+      if (event !== 'connected') {
+        throw Error('Поддерживается только событие «connected».');
+      }
+      connectedCallback = callback;
+    },
+    disconnect() {
+      clearTimeout(timeout);
+    }
+  };
+}
+```
+```js tab="Tab 3"
+//notifications.js hidden
+import Toastify from 'toastify-js';
+import 'toastify-js/src/toastify.css';
+
+export function showNotification(message, theme) {
+  Toastify({
+    text: message,
+    duration: 2000,
+    gravity: 'top',
+    position: 'right',
+    style: {
+      background: theme === 'dark' ? 'black' : 'white',
+      color: theme === 'dark' ? 'white' : 'black',
+    },
+  }).showToast();
+}
+```
+```js tab="Tab 4"
+
+label { display: block; margin-top: 10px; }
+```
+
+Можно считать, что события эффектов очень похожи на обработчики событий. Главное отличие заключается в том, что обработчики событий запускаются в ответ на взаимодействия пользователя, тогда как события эффектов вызываются вами из эффектов. События эффектов позволяют «разорвать цепочку» между реактивностью эффектов и кодом, который не должен быть реактивным.
+
+### Чтение последних пропсов и состояния с помощью событий эффектов 
+
+События эффектов позволяют исправить многие шаблоны, в которых у вас может возникнуть соблазн подавить линтер зависимостей.
+
+Например, предположим, у вас есть эффект для регистрации посещений страницы:
+
+```js
+function Page() {
+  useEffect(() => {
+    logVisit();
+  }, []);
+  // ...
+}
+```
+
+Позже вы добавляете на сайт несколько маршрутов. Теперь ваш компонент `Page` получает проп `url` с текущим путем. Вы хотите передать `url` как часть вызова `logVisit`, но линтер зависимостей выдает ошибку:
+
+```js
+function Page({ url }) {
+  useEffect(() => {
+    logVisit(url);
+  }, []); // 🔴 В React Hook useEffect отсутствует зависимость: 'url'
+  // ...
+}
+```
+
+Подумайте, что вы хотите, чтобы делал код. Вы *хотите* регистрировать отдельный визит для разных URL-адресов, поскольку каждый URL представляет собой отдельную страницу. Другими словами, этот вызов `logVisit` *должен* быть реактивным по отношению к `url`. Вот почему в данном случае имеет смысл последовать рекомендации линтера зависимостей и добавить `url` в качестве зависимости:
+
+```js {4}
+function Page({ url }) {
+  useEffect(() => {
+    logVisit(url);
+  }, [url]); // ✅ Все зависимости объявлены
+  // ...
+}
+```
+
+Теперь предположим, что вы хотите включать количество товаров в корзине при каждом посещении страницы:
+
+```js 
+function Page({ url }) {
+  const { items } = useContext(ShoppingCartContext);
+  const numberOfItems = items.length;
+  
+useEffect(() => {
+    logVisit(url, numberOfItems);
+  }, [url]); // 🔴 В React Hook useEffect отсутствует зависимость: 'numberOfItems'
+  // ...
+}
+```
+
+Вы использовали `numberOfItems` внутри эффекта, поэтому линтер просит вас добавить его в качестве зависимости. Однако вы *не* хотите, чтобы вызов `logVisit` реагировал на изменения `numberOfItems`. Если пользователь добавляет что-то в корзину и `numberOfItems` изменяется, это *не означает*, что пользователь снова посетил страницу. Другими словами, *посещение страницы* — это, в некотором смысле, «событие». Оно происходит в конкретный момент времени.
+
+Разделите код на две части:
+
+```js 
+function Page({ url }) {
+  const { items } = useContext(ShoppingCartContext);
+  
+const numberOfItems = items.length;
+
+  const onVisit = useEffectEvent(visitedUrl => {
+    logVisit(visitedUrl, numberOfItems);
+  });
+
+  useEffect(() => {
+    onVisit(url);
+  }, [url]); // ✅ Все зависимости объявлены
+  // ...
+}
+```
+
+Здесь `onVisit` является событием эффекта. Код внутри него не является реактивным. Именно поэтому вы можете использовать `numberOfItems` (или любое другое реактивное значение!) без опасений, что это приведет к повторному выполнению окружающего кода при изменениях.
+
+С другой стороны, сам эффект остается реактивным. Код внутри эффекта использует проп `url`, поэтому эффект будет -запускаться после каждого перерисовки с другим `url`. Это, в свою очередь, вызовет событие эффекта `onVisit`.
+
+В результате вы будете вызывать `logVisit` при каждом изменении `url` и всегда считывать последнее значение `numberOfItems`. Однако, если `numberOfItems` изменится само по себе, это не приведет к повторному запуску какого-либо кода.
+
+<Callout>
+
+Возможно, вы задаетесь вопросом, можно ли вызвать `onVisit()` без аргументов и прочитать `url` внутри него:
+
+```js 
+  const onVisit = useEffectEvent(() => {
+    logVisit(url, numberOfItems);
+  });
+
+  useEffect(() => {
+    onVisit();
+  }, [url]);
+```
+
+Это сработает, но лучше явно передать этот `url` в Effect Event. **Передавая `url` в качестве аргумента в ваш Effect Event, вы тем самым указываете, что посещение страницы с другим `url` представляет собой отдельное «событие» с точки зрения пользователя.** `visitedUrl` является *частью* произошедшего «события»:
+
+```js 
+  const onVisit = useEffectEvent(visitedUrl => {
+    logVisit(visitedUrl, numberOfItems);
+  });
+
+  useEffect(() => {
+    onVisit(url);
+  }, [url]);
+```
+
+Поскольку ваше событие эффекта явно «запрашивает» `visitedUrl`, теперь вы не сможете случайно удалить `url` из зависимостей эффекта. Если вы удалите зависимость `url` (что приведет к тому, что отдельные посещения страниц будут считаться одним), линтер предупредит вас об этом. Вы хотите, чтобы `onVisit` реагировал на изменения `url`, поэтому вместо того, чтобы считывать `url` внутри (где он не будет реагировать), вы передаете его *из* вашего эффекта.
+
+Это становится особенно важным, если внутри эффекта есть какая-то асинхронная логика:
+
+```js 
+  const onVisit = useEffectEvent(visitedUrl => {
+    logVisit(visitedUrl, numberOfItems);
+  });
+
+  useEffect(() => {
+    setTimeout(() => {
+      onVisit(url);
+    }, 5000); // Задержка регистрации посещений
+  }, [url]);
+```
+
+Здесь `url` внутри `onVisit` соответствует *последнему* `url` (который уже мог измениться), но `visitedUrl` соответствует тому `url`, который изначально вызвал запуск этого эффекта (и этого вызова `onVisit`).
+
+</Callout>
+
+<Callout type='idea'>
+
+#### Можно ли вместо этого отключить линтер зависимостей? {/*is-it-okay-to-suppress-the-dependency-linter-instead*/}
+
+В существующих кодовых базах иногда можно увидеть, что правило линтера отключено следующим образом:
+
+```js
+function Page({ url }) {
+  const { items } = useContext(ShoppingCartContext);
+  const numberOfItems = items.length;
+
+  useEffect( () => {
+    logVisit(url, numberOfItems);
+    // 🔴 Избегайте подавления линтера следующим образом:
+    
+// eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url]);
+  // ...
+}
+```
+
+Мы рекомендуем **никогда не подавлять линтер**.
+
+Первый минус подавления правила заключается в том, что React больше не будет предупреждать вас, когда вашему Effect нужно «реагировать» на новую реактивную зависимость, которую вы добавили в свой код. 
+В предыдущем примере вы добавили `url` в зависимости *потому что* React напомнил вам об этом. Вы больше не будете получать такие напоминания при любых будущих изменениях этого эффекта, если отключите линтер. Это приводит к ошибкам.
+
+Вот пример запутанной ошибки, вызванной подавлением линтера. В этом примере функция `handleMove` должна считывать текущее значение переменной состояния `canMove`, чтобы решить, следует ли точке должна следовать за курсором. Однако `canMove` всегда равна `true` внутри `handleMove`.
+
+Видите, почему?
+
+```js tab="Tab 1"
+
+import { useState, useEffect } from 'react';
+
+export default function App() {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [canMove, setCanMove] = useState(true);
+
+  function handleMove(e) {
+    if (canMove) {
+      setPosition({ x: e.clientX, y: e.clientY });
+    }
+  }
+
+  useEffect(() => {
+    window.addEventListener('pointermove', handleMove);
+    return () => window.removeEventListener('pointermove', handleMove);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <>
+      <label>
+        <input type="checkbox"
+          checked={canMove}
+          onChange={e => setCanMove(e.target.checked)}
+        />
+        Точка может перемещаться
+      </label>
+      <hr />
+      <div style={ {
+        position: 'absolute',
+        backgroundColor: 'pink',
+        borderRadius: '50%',
+        opacity: 0.6,
+        transform: `translate(${position.x}px, ${position.y}px)`,
+        pointerEvents: 'none',
+        left: -20,
+        top: -20,
+        width: 40,
+        height: 40,
+      }} />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+
+body {
+  height: 200px;
+}
+```
+
+Проблема с этим кодом заключается в подавлении линтера зависимостей. Если убрать подавление, вы увидите, что этот эффект должен зависеть от функции `handleMove`. Это логично: `handleMove` объявлена внутри тела компонента, что делает её реактивным значением. Каждое реактивное значение должно быть указано в качестве зависимости, иначе со временем оно может устареть!
+
+Автор исходного кода «обманул» React, заявив, что эффект не зависит (`[]`) от каких-либо реактивных значений. Именно поэтому React не пересинхронизировал эффект после изменения `canMove` (и `handleMove` вместе с ним). Поскольку React не пересинхронизировал эффект, `handleMove`, прикрепленный в качестве слушателя, является функцией `handleMove`, созданной во время первоначального рендеринга. Во время первоначального рендеринга `canMove` было `true`, поэтому `handleMove` из первоначального рендеринга будет всегда видеть это 
+значение.
+
+**Если вы никогда не отключаете линтер, вы никогда не увидите проблем с устаревшими значениями.**
+
+С `useEffectEvent` нет необходимости «обманывать» линтер, и код работает так, как вы ожидаете:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { useEffectEvent } from 'react';
+
+export default function App() {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [canMove, setCanMove] = useState(true);
+  
+const onMove = useEffectEvent(e => {
+    if (canMove) {
+      setPosition({ x: e.clientX, y: e.clientY });
+    }
+  });
+
+  useEffect(() => {
+    window.addEventListener('pointermove', onMove);
+    
+return () => window.removeEventListener('pointermove', onMove);
+  }, []);
+
+  return (
+    <>
+      <label>
+        <input type="checkbox"
+          checked={canMove}
+          onChange={e => setCanMove (e.target.checked)}
+        />
+        Точка может перемещаться
+      </label>
+      <hr />
+      <div style={{
+        position: 'absolute',
+        backgroundColor: 'pink',
+        borderRadius: '50%',
+        opacity: 0.6,
+        transform: `translate(${position.x}px, ${position.y}px) `,
+        pointerEvents: 'none',
+        left: -20,
+        top: -20,
+        width: 40,
+        height: 40,
+      }} />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+
+body {
+  height: 200px;
+}
+```
+
+Это не означает, что `useEffectEvent` — *всегда* правильное решение. Вы должны применять его только к тем строкам кода, которые не должны быть реактивными. В приведенном выше примере вы не хотели, чтобы код эффекта реагировал на изменения `canMove`. Вот почему было разумно выделить событие эффекта.
+
+Прочитайте [Удаление зависимостей эффектов](/learn/removing-effect-dependencies), чтобы узнать о других правильных альтернативах подавлению линтера.
+
+</Callout>
+
+### Ограничения событий эффектов {/*limitations-of-effect-events*/}
+
+Возможности использования событий эффектов очень ограничены:
+
+* **Вызывайте их только изнутри эффектов.**
+* **Никогда не передавайте их другим компонентам или хукам.**
+
+Например, не объявляйте и не передавайте событие эффекта следующим образом:
+
+```js 
+function Timer() {
+  
+const [count, setCount] = useState(0);
+
+  const onTick = useEffectEvent(() => {
+    setCount(count + 1);
+  });
+
+  useTimer(onTick, 1000); // 🔴 Не рекомендуется: передача событий эффектов
+
+  return <h1>{count}</h1>
+}
+
+function useTimer(callback, delay) {
+  useEffect(() => {
+    const id = setInterval(() => {
+      callback();
+    }, delay);
+    return () => {
+      clearInterval(id);
+    };
+  }, [delay, callback]); // Необходимо указать «callback» в зависимостях
+}
+```
+
+Вместо этого всегда объявляйте события эффектов непосредственно рядом с эффектами, которые их используют:
+
+```js 
+function Timer() {
+  const [count, setCount] = useState(0);
+  useTimer(() => {
+    setCount(count + 1);
+  }, 1000);
+  return <h1>{count}</h1>
+}
+
+function useTimer(callback, delay) {
+  const onTick = useEffectEvent(() => {
+    callback();
+  });
+
+  useEffect(() => {
+    const id = setInterval (() => {
+      onTick(); // ✅ Хорошо: вызывается только локально внутри эффекта
+    }, delay);
+    return () => {
+      clearInterval(id);
+    };
+  }, [delay]); // Нет необходимости указывать «onTick» (событие эффекта) в качестве зависимости
+}
+```
+
+События эффектов — это нереактивные «фрагменты» кода вашего эффекта. Они должны находиться рядом с эффектом, который их использует.
+
+## Вывод
+
+- Обработчики событий запускаются в ответ на определенные взаимодействия.
+- Эффекты запускаются всякий раз, когда требуется синхронизация.
+- Логика внутри обработчиков событий не является реактивной.
+- Логика внутри эффектов является реактивной.
+- Вы можете перенести нереактивную логику из эффектов в события эффектов.
+- Вызывайте события эффектов только изнутри эффектов.
+- Не передавайте события эффектов другим компонентам или хукам.

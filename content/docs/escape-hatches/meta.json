@@ -1,3 +1,3 @@
 {
-  "pages": [ "referencing-values-with-refs", "manipulating-the-dom-with-refs" ]
+  "pages": [ "referencing-values-with-refs", "manipulating-the-dom-with-refs", "synchronizing-with-effects", "you-might-not-need-an-effect", "lifecycle-of-reactive-effects", "separating-events-from-effects", "removing-effect-dependencies", "reusing-logic-with-custom-hooks" ]
 }

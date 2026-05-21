@@ -1,0 +1,1152 @@
+---
+title: Удаление зависимостей эффектов
+description: При написании эффекта линтер проверяет, включены ли в список зависимостей эффекта все реактивные значения (такие как props и state), которые эффект считывает. Это гарантирует, что ваш эффект остается синхронизированным с последними значениями props и state вашего компонента. Ненужные зависимости могут привести к тому, что эффект будет запускаться слишком часто, или даже привести к возникновению бесконечного цикла. Следуйте этому руководству, чтобы проверить и удалить ненужные зависимости из ваших эффектов.
+---
+
+<Callout>
+### Вы узнаете [!toc]
+
+- Как исправить бесконечные циклы зависимостей эффектов
+- Что делать, если вы хотите удалить зависимость
+- Как считывать значение из вашего эффекта, не «реагируя» на него
+- Как и почему следует избегать зависимостей от объектов и функций
+- Почему опасно подавлять линтер зависимостей и что делать вместо этого
+
+</Callout>
+
+## Зависимости должны соответствовать коду
+
+Когда вы пишете эффект, вы сначала указываете, как [запускать и останавливать](/learn/lifecycle-of-reactive-effects#the-lifecycle-of-an-effect) то, что вы хотите, чтобы ваш эффект делал:
+
+```js 
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect();
+      // ...
+}
+```
+
+Затем, если вы оставите зависимости эффекта пустыми (`[]`), линтер предложит правильные зависимости:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect ();
+  }, []); // <-- Исправьте ошибку здесь!
+  return <h1>Добро пожаловать в комнату {roomId}!</h1>;
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  return (
+    <>
+      <label>
+        Выберите чат-комнату:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <hr />
+      <ChatRoom roomId={roomId} />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection(serverUrl, roomId) {
+  // В реальной реализации здесь бы происходило подключение к серверу
+  return {
+    connect() {
+      console.log('✅ Подключение к комнате «' + roomId + '» по адресу ' + serverUrl + '...');
+    },
+    disconnect() {
+      console.log('❌ Отключено от комнаты «' + roomId + '» по адресу ' + serverUrl);
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+
+input { display: block; margin-bottom: 20px; }
+button { margin-left: 10px; }
+```
+
+Заполните их в соответствии с указаниями линтера:
+
+```js 
+function ChatRoom({ roomId }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]); // ✅ Все зависимости объявлены
+  // ...
+}
+```
+
+[Эффекты «реагируют» на реактивные значения.](/learn/lifecycle-of-reactive-effects#effects-react-to-reactive-values) Поскольку `roomId` является реактивным значением (оно может измениться в результате повторного рендеринга), линтер проверяет, что вы указали его в качестве зависимости. Если `roomId` получит другое значение, React пере -синхронизирует ваш эффект. Это гарантирует, что чат останется подключенным к выбранной комнате и будет «реагировать» на выпадающий список:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+  return <h1>Добро пожаловать в комнату {roomId}!</h1>;
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  return (
+    <>
+      <label>
+        Выберите комнату чата:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+        <hr />
+      <ChatRoom roomId={roomId} />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection(serverUrl, roomId) {
+  // В реальной реализации здесь бы происходило подключение к серверу
+  return {
+    connect() {
+      console.log('✅ Подключение к комнате «' + roomId + '» по адресу ' + serverUrl + '...');
+    },
+    disconnect() {
+      console.log('❌ Отключено от комнаты «' + roomId + '» по адресу ' + serverUrl);
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+
+input { display: block; margin-bottom: 20px; }
+button { margin-left: 10px; }
+```
+
+### Чтобы удалить зависимость, докажите, что она не является зависимостью {/*to-remove-a-dependency-prove-that-its-not-a-dependency*/}
+
+Обратите внимание, что вы не можете «выбирать» зависимости вашего эффекта. Каждое реактивное значение, используемое кодом вашего эффекта, должно быть объявлено в вашем списке зависимостей. Список зависимостей определяется окружающим кодом:
+
+```js
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) { // Это реактивное значение
+  useEffect( () => {
+    const connection = createConnection(serverUrl, roomId); // Этот эффект считывает это реактивное значение
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]); // ✅ Поэтому вы должны указать это реактивное значение в качестве зависимости вашего эффекта
+  // ...
+}
+```
+
+[Реактивные значения](/learn/lifecycle-of-reactive-effects#all-variables-declared-in-the-component-body-are-reactive) включают в себя props, а также все переменные и функции, объявленные непосредственно внутри вашего компонента. Поскольку `roomId` является реактивным значением, вы не можете удалить его из списка зависимостей. Линтер не позволит этого:
+
+```
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect();
+  }, []); // 🔴 В React Hook useEffect отсутствует зависимость: 'roomId'
+  // ...
+}
+```
+
+И линтер будет прав! Поскольку `roomId` может изменяться со временем, это приведет к появлению ошибки в вашем коде.
+
+**Чтобы удалить зависимость, «докажите» линтеру, что она *не должна* быть зависимостью.** Например, вы можете вынести `roomId` за пределы вашего компонента, чтобы доказать, что он не является реактивным и не изменится при повторном рендеринге:
+
+```js 
+const serverUrl = ' https://localhost:1234';
+const roomId = 'music'; // Больше не является реактивным значением
+
+function ChatRoom() {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect ();
+  }, []); // ✅ Все зависимости объявлены
+  // ...
+}
+```
+
+Теперь, когда `roomId` не является реактивным значением (и не может измениться при повторном рендеринге), оно не должно быть зависимостью:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+const serverUrl = 'https://localhost:1234';
+const roomId = 'music';
+
+export default function ChatRoom() {
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => connection.disconnect();
+  }, []);
+  return <h1>Добро пожаловать в комнату {roomId}!</h1>;
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection(serverUrl, roomId) {
+  // В реальной реализации бы произошло подключение к серверу
+  return {
+    connect () {
+      console.log('✅ Подключение к комнате «' + roomId + '» по адресу ' + serverUrl + '...');
+    },
+    disconnect() {
+      console.log('❌ Отключено от комнаты «' + roomId + '» по адресу ' + serverUrl);
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+
+input { display: block; margin-bottom: 20px; }
+button { margin-left: 10px; }
+```
+
+Именно поэтому теперь вы можете указать [пустой (`[]`) список зависимостей.](/learn/lifecycle-of-reactive-effects#what-an-effect-with-empty-dependencies-means) Ваш эффект *действительно больше не* зависит от каких-либо реактивных значений, поэтому ему *действительно не* нужно перезапускаться при изменении каких-либо пропсов или состояния компонента.
+
+### Чтобы изменить зависимости, измените код 
+
+Возможно, вы заметили определенную закономерность в своем рабочем процессе:
+
+1. Сначала вы **изменяете код** вашего эффекта или то, как объявляются ваши реактивные значения.
+2. Затем вы следуете рекомендациям линтера и корректируете зависимости, чтобы **они соответствовали измененному коду.**
+3. Если вас не устраивает список зависимостей, вы **возвращаетесь к первому шагу** (и снова изменяете код).
+
+Последнее очень важно. **Если вы хотите изменить зависимости, сначала измените окружающий код.** Вы можете рассматривать список зависимостей как [список всех реактивных значений, используемых кодом вашего эффекта.](/learn/lifecycle-of-reactive-effects#react-verifies -что-вы-указали-каждое-реактивное-значение-в-качестве-зависимости). Вы не *выбираете*, что поместить в этот список. Список *описывает* ваш код. Чтобы изменить список зависимостей, измените код.
+
+Это может показаться решением уравнения. Вы можете начать с цели (например, удалить зависимость) и вам нужно «найти» код, соответствующий этой цели. Не всем нравится решать уравнения, и то же самое можно сказать о написании эффектов! К счастью, ниже приведен список распространенных рецептов, которые вы можете попробовать.
+
+<Callout>
+
+Если у вас есть существующая кодовая база, у вас могут быть некоторые эффекты, которые подавляют работу линтера , например:
+
+```js 
+useEffect(() => {
+  // ...
+  // 🔴 Избегайте подавления линтера таким образом:
+  // eslint-ignore-next-line react-hooks/exhaustive-deps
+}, []);
+```
+
+**Когда зависимости не соответствуют коду, существует очень высокий риск появления ошибок.** Подавляя линтер, вы «обманываете» React относительно значений, от которых зависит ваш эффект.
+
+Вместо этого используйте приведенные ниже методы.
+
+</Callout>
+
+<Callout type='idea'>
+
+#### Почему подавление линтера зависимостей так опасно? {/*why-is-suppressing-the-dependency-linter-so-dangerous*/}
+
+Подавление линтера приводит к появлению очень неинтуитивных ошибок, которые трудно найти и исправить. Вот один пример:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+
+export default function Timer() {
+  const [count, setCount] = useState(0);
+  const [increment, setIncrement] = useState(1);
+
+  function onTick() {
+	setCount(count + increment);
+  }
+
+  useEffect(() => {
+    const id = setInterval(onTick, 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <>
+      <h1>
+        Counter: {count}
+        <button onClick={() => setCount(0)}>Reset</button>
+      </h1>
+      <hr />
+      <p>
+        Every second, increment by:
+        <button disabled={increment === 0} onClick={() => {
+          setIncrement(i => i - 1);
+        }}>–</button>
+        <b>{increment}</b>
+        <button onClick={() => {
+          setIncrement(i => i + 1);
+        }}>+</button>
+      </p>
+    </>
+  );
+}
+```
+```js tab="Tab 2"
+
+button { margin: 10px; }
+```
+
+Допустим, вы хотите запустить эффект «только при монтировании» . Вы прочитали, что [пустые (`[]`) зависимости](/learn/lifecycle-of-reactive-effects#what-an-effect-with-empty-dependencies-means) позволяют это сделать, поэтому решили проигнорировать линтер и принудительно указали `[]` в качестве зависимостей.
+
+Этот счетчик должен был увеличиваться каждую секунду на величину, настраиваемую с помощью двух кнопок.
+ Однако, поскольку вы «солгали» React, что этот эффект ни от чего не зависит, React продолжает использовать функцию `onTick` из первоначального рендеринга. [Во время того рендеринга](/learn/state-as-a-snapshot#rendering-takes -a-snapshot-in-time) `count` равен `0`, а `increment` — `1`. Вот почему `onTick` из того рендеринга всегда вызывает `setCount(0 + 1)` каждую секунду, и вы всегда видите `1`. Такие ошибки сложнее исправлять, когда они распространяются на несколько компонентов.
+
+Всегда есть решение лучше, чем игнорировать линтер! Чтобы исправить этот код, вам нужно добавить `onTick` в список зависимостей. (Чтобы гарантировать, что интервал настраивается только один раз, [сделайте `onTick` событием эффекта.](/learn/separating-events-from-effects# чтение-последних-пропсов-и-состояния-с-помощью-событий-эффектов))
+
+**Мы рекомендуем рассматривать ошибку линтера, связанную с зависимостями, как ошибку компиляции. Если вы не будете ее подавлять, вы никогда не увидите подобных ошибок.** В остальной части этой страницы описаны альтернативы для этого и других случаев.
+
+</Callout>
+
+## Удаление ненужных зависимостей {/*removing-unnecessary-dependencies*/}
+
+Каждый раз, когда вы корректируете зависимости эффекта в соответствии с кодом, просматривайте список зависимостей. Имеет ли смысл повторно запускать эффект при изменении любой из этих зависимостей? Иногда ответ будет «нет»:
+
+* Возможно, вам захочется повторно выполнять *разные части* вашего эффекта при разных условиях.
+* Возможно, вам захочется читать только *последнее значение* какой-то зависимости вместо того, чтобы «реагировать» на её изменения.
+* Зависимость может меняться слишком часто *непреднамеренно*, поскольку представляет собой объект или функцию.
+
+Чтобы найти правильное решение, вам нужно ответить на несколько вопросов о вашем эффекте. Давайте рассмотрим их.
+
+### Следует ли перенести этот код в обработчик событий? {/*should-this-code-move-to-an-event-handler*/}
+
+Первое, о чем вам следует подумать, — должен ли этот код вообще быть эффектом.
+
+Представьте себе форму. При отправке вы устанавливаете переменную состояния `submitted` в `true`. Вам нужно отправить POST-запрос и показать уведомление. Вы поместили эту логику внутрь эффекта, который «реагирует» на то, что `submitted` равно `true`:
+
+```js 
+function Form() {
+  const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (submitted) {
+      // 🔴 Не рекомендуется: логика, связанная с конкретным событием, внутри эффекта
+      post('/api/register');
+      showNotification('Успешно зарегистрировано!');
+    }
+  }, [submitted]);
+
+  function handleSubmit() 
+{
+    setSubmitted(true);
+  }
+
+  // ...
+}
+```
+
+Позже вам захочется стилизовать уведомление в соответствии с текущей темой, поэтому вы считываете текущую тему. Поскольку `theme` объявлено в теле компонента, это реактивное значение, поэтому вы добавляете его в качестве зависимости:
+
+```js 
+function Form() {
+  
+const [submitted, setSubmitted] = useState(false);
+  const theme = useContext(ThemeContext);
+
+  useEffect(() => {
+    if (submitted) {
+      
+// 🔴 Не рекомендуется: логика, связанная с конкретным событием, внутри эффекта
+      post('/api/register');
+      showNotification('Успешно зарегистрированы!', theme);
+    }
+  }, [submitted, theme]); // ✅ Все зависимости объявлены
+
+  function handleSubmit() {
+    setSubmitted(true) ;
+  }
+
+  // ...
+}
+```
+
+Поступая таким образом, вы ввели ошибку. Представьте, что вы сначала отправляете форму, а затем переключаетесь между темной и светлой темами. Переменная `theme` изменится, эффект запустится заново, и, следовательно, отобразит то же самое уведомление снова!
+
+**Проблема здесь в том, что это изначально не должно быть эффектом.** Вы хотите отправить этот POST-запрос и показать уведомление в ответ на *отправку формы*, что является конкретным взаимодействием. Чтобы запустить код в ответ на конкретное взаимодействие, поместите эту логику непосредственно в соответствующий обработчик события:
+
+```js 
+function Form() {
+  const theme = useContext(ThemeContext);
+  
+function handleSubmit() {
+    // ✅ Правильно: логика, специфичная для события, вызывается из обработчиков событий
+    post('/api/register');
+    showNotification('Успешно зарегистрированы!', theme);
+  }
+
+  // ...
+}
+```
+
+Теперь, когда код находится в обработчике события, он не является реактивным — поэтому он будет выполняться только тогда, когда пользователь отправляет форму. Узнайте больше о [выборе между обработчиками событий и эффектами](/learn/separating-events-from-effects#reactive-values-and-reactive-logic) и о том, [как удалить ненужные эффекты.](/learn/you-might-not-need-an-effect)
+
+### Ваш эффект выполняет несколько несвязанных действий? {/*is-your-effect-doing-several-unrelated-things*/}
+
+Следующий вопрос, который вы должны себе задать: выполняет ли ваш эффект несколько несвязанных действий.
+
+Представьте, что вы создаете форму доставки, в которой пользователю нужно выбрать свой город и регион. Вы получаете список `cities` с сервера в соответствии с выбранной `country`, чтобы отобразить их в выпадающем списке:
+
+```js
+function ShippingForm( { country }) {
+  const [cities, setCities] = useState(null);
+  const [city, setCity] = useState(null);
+  useEffect(() => {
+    let ignore = false;
+    fetch(`/api/cities?country=${country}`)
+      .then(response => response.json())
+      .then(json => {
+        if (!ignore) {
+          setCities(json);
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [country]); // ✅ Все зависимости объявлены
+
+  // ...
+```
+
+Это хороший пример [загрузки данных в эффекте.](/learn/you-might-not-need-an -effect#fetching-data) Вы синхронизируете состояние `cities` с сетью в соответствии с проп `country`. Вы не можете сделать это в обработчике событий, потому что вам нужно загрузить данные, как только отобразится `ShippingForm` и всякий раз, когда изменяется `country` (независимо от того, какое взаимодействие вызывает это).
+
+Теперь предположим, что вы добавляете второй список выбора для районов города, который должен загружать `areas` для текущего выбранного `city`. Вы можете начать с добавления второго вызова `fetch` для списка районов внутри того же самого Effect:
+
+```js 
+function ShippingForm({ country }) {
+  const [cities, setCities] = useState(null);
+  const [city, setCity] = useState(null);
+  const [areas, setAreas] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+    fetch(`/api/cities?country=${country}`)
+      .then(response => response.json ())
+      .then(json => {
+        if (!ignore) {
+          setCities(json);
+        }
+      });
+    // 🔴 Не рекомендуется: один эффект синхронизирует два независимых процесса
+    if (city) {
+      fetch(`/api/areas?city=${city}`)
+        .then(response => response.json())
+        .then(json => {
+          if (!ignore) {
+            setAreas(json);
+          }
+        });
+    }
+    return () => {
+      ignore = true;
+    };
+  }, [country, city]); // ✅ Все зависимости объявлены
+
+  // ...
+```
+
+Однако, поскольку эффект теперь использует переменную состояния `city`, вам пришлось добавить `city` в список зависимостей. Это, в свою очередь, привело к появлению проблемы: когда пользователь выбирает другой город, эффект запускается заново и вызывает `fetchCities(country)`. В результате вы будете неоправданно повторно загружать список городов много раз.
+
+**Проблема этого кода заключается в том, что вы синхронизируете две разные, не связанные между собой вещи:**
+
+1. Вы хотите синхронизировать состояние `cities` с сетью на основе проп `country`.
+1. Вы хотите синхронизировать состояние `areas` с сетью на основе состояния `city`.
+
+Разделите логику на два эффекта, каждый из которых реагирует на проп, с которым ему нужно синхронизироваться:
+
+```js 
+function ShippingForm({ country }) {
+  const [cities, setCities] = useState(null);
+  useEffect(() => {
+    let ignore = false;
+    fetch (`/api/cities?country=${country}`)
+      .then(response => response.json())
+      .then(json => {
+        if (!ignore) {
+          setCities(json);
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [country]); // ✅ Все зависимости объявлены
+  
+const [city, setCity] = useState(null);
+  const [areas, setAreas] = useState(null);
+  
+useEffect(() => {
+    if (city) {
+      let ignore = false;
+      fetch(`/api/areas?city=${city}`)
+        .then(response => response.json())
+        .then(json => {
+          if (!ignore) {
+            setAreas(json);
+          }
+        });
+      return () => {
+        ignore = true;
+      };
+    }
+  }, [city]); // ✅ Все зависимости объявлены
+
+  // ...
+```
+
+Теперь первый эффект перезапускается только при изменении `country`, а второй — при изменении `city`. Вы разделили их по назначению: две разные вещи синхронизируются двумя отдельными эффектами. Два отдельных эффекта имеют два отдельных списка зависимостей, поэтому они не будут непреднамеренно запускать друг друга.
+
+Окончательный код длиннее исходного, но разделение этих эффектов по-прежнему является правильным. [Каждый эффект должен представлять собой независимый процесс синхронизации.](/learn/lifecycle-of-reactive-effects#each-effect-represents-a-separate-synchronization-process) В этом примере удаление одного эффекта не нарушает логику другого эффекта. Это означает, что они *синхронизируют разные вещи*, и их разделить — это хорошо. Если вас беспокоит дублирование, вы можете улучшить этот код, [вынеся повторяющуюся логику в пользовательский хук.](/learn/reusing-logic-with-custom-hooks#when-to-use-custom-hooks)
+
+### Вы считываете какое-то состояние, чтобы вычислить следующее состояние? {/*вы -вы-читаете-какое-то-состояние-для-вычисления-следующего-состояния*/}
+
+Этот эффект обновляет переменную состояния `messages` с помощью вновь созданного массива каждый раз, когда поступает новое сообщение:
+
+```js 
+function ChatRoom({ roomId }) {
+  
+const [messages, setMessages] = useState([]);
+  useEffect(() => {
+    const connection = createConnection();
+    connection.connect();
+    connection.on('message', (receivedMessage) => {
+      setMessages([...messages, receivedMessage]);
+    });
+    // ...
+```
+
+Он использует переменную `messages` для [создания нового массива](/learn/updating-arrays-in -state), начиная со всех существующих сообщений, и добавляет новое сообщение в конец. Однако, поскольку `messages` является реактивным значением, считываемым эффектом, оно должно быть зависимостью:
+
+```js 
+function ChatRoom({ roomId }) {
+  const [messages, setMessages] = useState([]);
+  useEffect(() => {
+    const connection = createConnection();
+    
+connection.connect();
+    connection.on('message', (receivedMessage) => {
+      setMessages([...messages, receivedMessage]);
+    });
+    return () => connection.disconnect();
+  }, [roomId, messages]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+А сделать `messages` зависимостью приводит к появлению проблемы.
+
+Каждый раз, когда вы получаете сообщение, `setMessages()` заставляет компонент перерисовываться с новым массивом `messages`, включающим полученное сообщение. Однако, поскольку этот эффект теперь зависит от `messages`, это *также* приведет к повторной синхронизации эффекта. Таким образом, каждое новое сообщение заставит чат переподключаться. Пользователю это не понравится!
+
+Чтобы исправить эту проблему, не читайте `messages` внутри эффекта. Вместо этого передайте [функцию обновления](/reference/react/useState#updating-state-based-on-the-previous-state) в `setMessages`:
+
+```js 
+function ChatRoom({ roomId }) {
+  const [messages, setMessages] = useState ([]);
+  useEffect(() => {
+    const connection = createConnection();
+    connection.connect();
+    connection.on('message', (receivedMessage) => {
+      setMessages(msgs => [...msgs, receivedMessage]);
+    });
+    return () => connection.disconnect();
+  }, [roomId]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+**Обратите внимание, что теперь ваш Effect вообще не читает переменную `messages`.** Вам нужно только передать функцию обновления, например `msgs => [...msgs, receivedMessage]`. React [помещает вашу функцию обновления в очередь](/learn/queueing-a-series-of-state-updates) и предоставит ей аргумент `msgs` во время следующего рендеринга. Именно поэтому самому эффекту больше не нужно зависеть от `messages`. В результате этого исправления получение сообщения в чате больше не будет вызывать повторное подключение чата.
+
+### Хотите прочитать значение, не «реагируя» на его изменения? {/* хотите-ли-вы-считать-значение-не-реагируя-на-его-изменения*/}
+
+Предположим, что вы хотите воспроизвести звук, когда пользователь получает новое сообщение, если `isMuted` не равно `true`:
+
+```js
+function ChatRoom ({ roomId }) {
+  const [messages, setMessages] = useState([]);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    const connection = createConnection();
+    connection.connect();
+    connection.on('message', (receivedMessage) => {
+      setMessages(msgs => [...msgs, receivedMessage]);
+      if (!isMuted) {
+        playSound();
+      }
+    });
+    // ...
+```
+
+Поскольку ваш эффект теперь использует `isMuted` в своем коде, вам необходимо добавить его в зависимостей:
+
+```js 
+function ChatRoom({ roomId }) {
+  const [messages, setMessages] = useState([]);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect (() => {
+    const connection = createConnection();
+    connection.connect();
+    connection.on('message', (receivedMessage) => {
+      setMessages(msgs => [...msgs, receivedMessage]);
+        if (!isMuted) {
+        playSound();
+      }
+    });
+    return () => connection.disconnect();
+  }, [roomId, isMuted]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Проблема заключается в том, что каждый раз, когда изменяется `isMuted` (например, когда пользователь нажимает переключатель «Muted»), эффект будет повторно синхронизироваться и повторно подключаться к чату. Это не тот пользовательский опыт, который нам нужен! (В этом примере даже отключение линтера не поможет — если вы это сделаете, `isMuted` «застрянет» со своим старым значением.)
+
+Чтобы решить эту проблему, вам нужно извлечь из эффекта логику, которая не должна быть реактивной. Вы не хотите, чтобы этот эффект «реагировал» на изменения в `isMuted`. [Переместите этот нереактивный фрагмент логики в событие эффекта:](/learn/separating-events-from -effects#declaring-an-effect-event)
+
+```js 
+import { useState, useEffect, useEffectEvent } from 'react';
+
+function ChatRoom({ roomId }) {
+  const [messages, setMessages] = useState([]);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const onMessage = useEffectEvent(receivedMessage => {
+    setMessages(msgs => [...msgs, receivedMessage]);
+    if (!isMuted) {
+      playSound();
+    }
+  });
+
+  useEffect(() => {
+    const connection = createConnection();
+    connection. connect();
+    connection.on('message', (receivedMessage) => {
+      onMessage(receivedMessage);
+    });
+    return () => connection.disconnect();
+  }, [roomId]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+События Effect позволяют разделить Effect на реактивные части (которые должны «реагировать» на реактивные значения, такие как `roomId`, и их изменения) и нереактивные части (которые только считывают их последние значения, как `onMessage` считывает `isMuted`). **Теперь, когда вы считываете `isMuted` внутри события Effect, оно не обязательно должно быть зависимостью вашего эффекта.* 
+* В результате чат не будет переподключаться при включении и выключении настройки «Muted», что решает исходную проблему!
+
+#### Оборачивание обработчика событий из пропсов {/*обертывание -обработчика-события-из-пропсов*/}
+
+Вы можете столкнуться с похожей проблемой, когда ваш компонент получает обработчик события в качестве пропса:
+
+```js {1,8,11}
+function ChatRoom({ roomId, onReceiveMessage }) {
+  const [messages, setMessages] = useState([]);
+  useEffect(() => {
+    const connection = createConnection();
+    connection.connect();
+    connection.on('message', (receivedMessage) => {
+      onReceiveMessage(receivedMessage);
+    });
+    return () => connection.disconnect();
+  }, [roomId, onReceiveMessage]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Предположим, что родительский компонент передает *другую* функцию `onReceiveMessage` при каждом рендере:
+
+```js
+<ChatRoom
+  roomId={roomId}
+  onReceiveMessage={receivedMessage => {
+    // ...
+  }}
+/>
+```
+
+Поскольку `onReceiveMessage` является зависимостью, это приведет к повторной синхронизации эффекта после каждого перерисовки родительского компонента. Это заставит его повторно подключаться к чату. Чтобы решить эту проблему, оберните вызов в событие Effect:
+
+```js 
+function ChatRoom({ roomId, onReceiveMessage }) {
+  const [messages, setMessages] = useState([]);
+
+  const onMessage = useEffectEvent(receivedMessage => {
+    onReceiveMessage(receivedMessage);
+  });
+  useEffect(() => {
+    const connection = createConnection();
+    connection.connect();
+    connection.on('message', (receivedMessage) => {
+      onMessage (receivedMessage);
+    });
+    return () => connection.disconnect();
+  }, [roomId]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+События Effect не являются реактивными, поэтому вам не нужно указывать их в качестве зависимостей. В результате чат больше не будет переподключаться, даже если родительский компонент передает функцию, которая отличается при каждом перерисовке.
+
+#### Разделение реактивного и нереактивного кода {/*separating-reactive-and-non-reactive-code*/}
+
+В этом примере вы хотите регистрировать посещение каждый раз, когда изменяется `roomId`. Вы хотите включать текущее значение `notificationCount` в каждый запись в журнале, но *не* хотите, чтобы изменение `notificationCount` вызывало событие записи в журнал.
+
+Решением снова является выделение нереактивного кода в Effect Event:
+
+```js 
+function Chat({ roomId, notificationCount }) {
+  const onVisit = useEffectEvent(visitedRoomId => {
+    logVisit(visitedRoomId, notificationCount);
+  });
+
+  useEffect(() => {
+    onVisit(roomId);
+  }, [roomId]); // ✅ Все зависимости объявлены
+  
+// ...
+}
+```
+
+Вы хотите, чтобы ваша логика реагировала на `roomId`, поэтому вы читаете `roomId` внутри вашего эффекта. Однако вы не хотите, чтобы изменение `notificationCount` приводило к записи лишнего посещения в журнал, поэтому вы читаете `notificationCount` внутри события эффекта. [Узнайте больше о чтении последних пропсов и состояния из эффектов с помощью событий эффектов.] (/learn/separating-events-from-effects#reading-latest-props-and-state-with-effect-events)
+
+### Некоторое реактивное значение изменяется непреднамеренно? {/*does-some-reactive-value-change-unintentionally*/}
+
+Иногда вы *хотите*, чтобы ваш эффект «реагировал» на определенное значение, но это значение меняется чаще, чем вам хотелось бы, и может не отражать никаких реальных изменений с точки зрения пользователя. Например, предположим, что вы создаете объект `options` в теле вашего компонента, а затем считываете этот объект изнутри вашего эффекта:
+
+```js 
+function ChatRoom({ room Id }) {
+  // ...
+  const options = {
+    serverUrl: serverUrl,
+    roomId: roomId
+  };
+
+  useEffect(() => {
+    const connection = createConnection(options);
+    connection.connect();
+    // ...
+```
+
+Этот объект объявлен в теле компонента, поэтому он является [реактивным значением.](/learn/lifecycle-of-reactive-effects#effects-react-to-reactive-values) Когда вы читаете реактивное значение таким образом внутри эффекта, вы объявляете его в качестве зависимости. Это гарантирует, что ваш эффект «реагирует» на его изменения:
+
+```js 
+  // ...
+  useEffect(() => {
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [options]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Важно объявить его в качестве зависимости! Это гарантирует, например, что если `roomId` изменится, ваш эффект переподключится к чату с новыми `options`. Однако в приведенном выше коде также есть проблема. Чтобы ее увидеть, попробуйте ввести текст в поле ввода в песочнице ниже и посмотрите, что произойдет в консоли:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+  // Временно отключите линтер, чтобы продемонстрировать проблему
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const options = {
+    serverUrl: serverUrl,
+    roomId: roomId
+  };
+
+  useEffect(() => {
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [options]);
+
+  return (
+    <>
+      <h1>Добро пожаловать в комнату {roomId}!</h1>
+      <input value={message} onChange={e => setMessage(e.target.value)} />
+    </>
+  );
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  return (
+    <>
+      <label>
+        Выберите чат-комнату:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value=" general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <hr />
+      <ChatRoom roomId={roomId} />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection({ serverUrl, roomId }) {
+  // В реальной реализации здесь бы происходило подключение к серверу
+  return {
+    connect() {
+      console.log('✅ Подключение к комнате «' + roomId + '» по адресу ' + serverUrl + '...');
+    },
+    disconnect () {
+      console.log('❌ Отключено от комнаты «' + roomId + '» на ' + serverUrl);
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+input { display: block; margin -bottom: 20px; }
+button { margin-left: 10px; }
+```
+
+В приведенном выше примере в песочнице ввод обновляет только переменную состояния `message`. С точки зрения пользователя это не должно влиять на соединение с чатом. Однако каждый раз, когда вы обновляете `message`, ваш компонент перерисовывается. Когда компонент перерисовывается, код внутри него запускается заново с нуля .
+
+При каждом перерисовке компонента `ChatRoom` с нуля создается новый объект `options`. React видит, что объект `options` — это *другой объект*, отличающийся от объекта `options`, созданного во время последнего рендеринга. Именно поэтому он повторно синхронизирует ваш эффект (который зависит от `options`), и чат переподключается по мере ввода текста.
+
+* *Эта проблема затрагивает только объекты и функции. В JavaScript каждый вновь созданный объект и функция считаются отличными от всех остальных. Неважно, что их содержимое может быть одинаковым!**
+
+```js 
+// Во время первого рендеринга
+const options1 = { serverUrl: 'https://localhost:1234', roomId: 'music' };
+
+// Во время следующего рендеринга
+const options2 = { serverUrl: 'https://localhost:1234', roomId: 'music' };
+
+// Это два разных объекта!
+console.log(Object.is(options1, options2)); // false
+```
+
+* *Зависимости от объектов и функций могут заставлять ваш Effect пересинхронизироваться чаще, чем это необходимо.**
+
+Именно поэтому, по возможности, вам следует избегать использования объектов и функций в качестве зависимостей вашего эффекта. Вместо этого попробуйте переместить их за пределы компонента, внутрь эффекта или извлечь из них примитивные значения.
+
+#### Переместите статические объекты и функции за пределы вашего компонента {/*move-static-objects-and-functions-outside-your-component*/}
+
+Если объект не зависит от каких-либо пропсов и состояния, вы можете переместить этот объект за пределы вашего компонента:
+
+```js 
+const options = {
+  serverUrl: 'https://localhost:1234',
+  roomId: 'music'
+};
+
+function ChatRoom() {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, []); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Таким образом, вы *доказываете* линтеру, что это не реактивно. Оно не может измениться в результате повторного рендеринга, поэтому не нужно быть зависимостью. Теперь повторный рендеринг `ChatRoom` не приведет к повторной синхронизации вашего эффекта.
+
+Это работает и для функций:
+
+```js 
+function createOptions() {
+  return {
+    serverUrl: 'https://localhost:1234',
+    roomId: 'music'
+  };
+}
+
+function ChatRoom() {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const options = createOptions();
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, []); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Поскольку `createOptions` объявлено вне вашего компонента, оно не является реактивным значением. Именно поэтому его не нужно указывать в зависимостях вашего эффекта, и именно поэтому оно никогда не вызовет повторную синхронизацию вашего эффекта -синхронизации.
+
+#### Перемещение динамических объектов и функций внутрь вашего эффекта {/*move-dynamic-objects-and-functions-inside-your-effect*/}
+
+Если ваш объект зависит от какого-либо реактивного значения, которое может измениться в результате повторного рендеринга, например, от проп `roomId`, вы не можете вынести его *за пределы* вашего компонента. Однако вы можете переместить его создание *внутрь* кода вашего эффекта:
+
+```js {7-10,11,14}
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+  
+useEffect(() => {
+    const options = {
+      serverUrl: serverUrl,
+      roomId: roomId
+    };
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection. disconnect();
+  }, [roomId]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Теперь, когда `options` объявлено внутри вашего эффекта, оно больше не является зависимостью вашего эффекта. Вместо этого единственным реактивным значением, используемым вашим эффектом, является `roomId`. Поскольку `roomId` не является объектом или функцией, вы можете быть уверены, что оно не будет *непреднамеренно* отличаться. В JavaScript числа и строки сравниваются по их содержимому:
+
+```js {7-8}
+// Во время первого рендеринга
+const roomId1 = 'music';
+
+/ / Во время следующего рендеринга
+const roomId2 = 'music';
+
+// Эти две строки одинаковы!
+console.log(Object.is(roomId1, roomId2)); // true
+```
+
+Благодаря этому исправлению чат больше не переподключается, если вы редактируете ввод:
+
+```js tab="Tab 1"
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const options = {
+      serverUrl: serverUrl,
+      roomId: roomId
+    };
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+return (
+    <>
+      <h1>Добро пожаловать в комнату {roomId}!</h1>
+      <input value={message} onChange={e => setMessage(e.target.value)} />
+    </>
+  );
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  
+return (
+    <>
+      <label>
+        Выберите чат-комнату:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">общий</option>
+          <option value="travel">путешествия</option>
+          <option value="music">музыка</option>
+        </select>
+      </label>
+      <hr />
+      <ChatRoom roomId={roomId} />
+    </>
+  );
+}
+```
+
+```js tab="Tab 2"
+//chat.js
+export function createConnection({ serverUrl, roomId }) {
+  // В реальной реализации здесь бы происходило подключение к серверу
+  return {
+    connect() {
+      console.log('✅ Подключение к комнате «' + roomId + '» по адресу ' + serverUrl + '...');
+    },
+    disconnect() {
+      console.log('❌ Отключено от комнаты «' + roomId + '» по адресу ' + serverUrl);
+    }
+  };
+}
+```
+
+```js tab="Tab 3"
+
+input { display: block; margin-bottom: 20px; }
+button { margin-left: 10px; }
+```
+
+Однако, как и следовало ожидать, при изменении выпадающего списка `roomId` соединение *восстанавливается*.
+
+Это работает и для функций:
+
+```js 
+const serverUrl = 'https://localhost:1234';
+
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    function createOptions() {
+      return {
+        serverUrl: serverUrl,
+        roomId: roomId
+      };
+    }
+
+    const options = createOptions();
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Вы можете написать собственные функции для группировки фрагментов логики внутри вашего эффекта. Пока вы также объявляете их *внутри* вашего эффекта, они не являются реактивными значениями, и поэтому не должны быть зависимостями вашего эффекта.
+
+#### Чтение примитивных значений из объектов {/*read-primitive-values-from-objects*/}
+
+Иногда вы можете получить объект из props:
+
+```js {1, 5,8}
+function ChatRoom({ options }) {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [options]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Риск здесь заключается в том, что родительский компонент создаст объект во время рендеринга:
+
+```js 
+<ChatRoom
+  roomId={roomId}
+  options={{
+    
+serverUrl: serverUrl,
+    roomId: roomId
+  }}
+/>
+```
+
+Это приведет к тому, что ваш эффект будет переподключаться каждый раз, когда родительский компонент перерисовывается. Чтобы исправить это, читайте информацию из объекта *вне* эффекта и избегайте зависимостей от объектов и функций:
+
+```js 
+function ChatRoom({ options }) {
+  const [message, setMessage] = useState('');
+
+  const { roomId, serverUrl } = options;
+  useEffect(() => {
+    const connection = createConnection({
+      roomId: roomId,
+      serverUrl: serverUrl
+    });
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId, serverUrl]); // ✅ Все зависимости объявлены
+  
+// ...
+```
+
+Логика становится немного повторяющейся (вы считываете некоторые значения из объекта вне эффекта, а затем создаете объект с теми же значениями внутри эффекта). Но это очень ясно показывает, от какой информации ваш эффект *на самом деле* зависит. Если объект будет непреднамеренно пересоздан родительским компонентом, чат не подключится заново. Однако, если `options. roomId` или `options.serverUrl` действительно отличаются, чат подключится заново.
+
+#### Вычисление примитивных значений из функций {/*calculate-primitive-values-from-functions*/}
+
+Тот же подход может работать и для функций. Например, предположим, что родительский компонент передает функцию:
+
+```js 
+<ChatRoom
+  roomId={roomId}
+  getOptions={() => {
+    return {
+      serverUrl: serverUrl,
+      roomId: roomId
+    };
+  }}
+/>
+```
+
+Чтобы избежать превращения этого в зависимость (и повторного подключения при перерисовке), вызовите его вне эффекта. Это даст вам значения `roomId` и `serverUrl`, которые не являются объектами и которые вы можете прочитать изнутри вашего эффекта:
+
+```js 
+function ChatRoom( { getOptions }) {
+  const [message, setMessage] = useState('');
+
+  const { roomId, serverUrl } = getOptions();
+  useEffect(() => {
+    const connection = createConnection({
+      roomId: roomId,
+      serverUrl: serverUrl
+    });
+    connection.connect();
+    return () => connection.disconnect() ;
+  }, [roomId, serverUrl]); // ✅ Все зависимости объявлены
+  // ...
+```
+
+Это работает только для [чистых](/learn/keeping-components-pure) функций, поскольку их можно безопасно вызывать во время рендеринга. Если ваша функция является обработчиком события, но вы не хотите, чтобы ее изменения привели к повторной синхронизации вашего Effect, [оберните ее вместо этого в Effect Event.](#do-you-want-to-read-a-value-without-reacting-to-its-changes)
+
+## Вывод
+
+- Зависимости всегда должны соответствовать коду.
+- Если вас не устраивают ваши зависимости, вам нужно редактировать код.
+- Подавление линкер приводит к очень запутанным ошибкам, и вам всегда следует этого избегать.
+- Чтобы удалить зависимость, вам нужно «доказать» линтеру, что она не нужна.
+- Если какой-то код должен выполняться в ответ на конкретное взаимодействие, перенесите его в обработчик события.
+- Если разные части вашего Effect должны перезапускаться по разным причинам, разделите его на несколько Effect.
+- Если вы хотите обновить какое-то состояние на основе предыдущего состояния, передайте функцию обновления.
+- Если вы хотите прочитать последнее значение, не «реагируя» на него, извлеките событие Effect из вашего Effect.
+- В JavaScript объекты и функции считаются разными, если они были созданы в разное время.
+- Старайтесь избегать зависимостей от объектов и функций. Переместите их за пределы компонента или внутрь Effect.
