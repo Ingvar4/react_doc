@@ -45,18 +45,7 @@ function CopyButton({ text }: { text: string }) {
       type="button"
       onClick={handleCopy}
       aria-label="Copy code"
-      style={{
-        border: "1px solid #d1d5db",
-        borderRadius: 10,
-        padding: "8px 10px",
-        fontSize: 13,
-        lineHeight: 1,
-        background: "#fff",
-        cursor: "pointer",
-        color: "#111827",
-        whiteSpace: "nowrap",
-        boxShadow: "0 1px 1px rgba(0, 0, 0, 0.03)",
-      }}
+      className="rde-copy"
     >
       {copied ? "Copied" : "Copy"}
     </button>
@@ -79,38 +68,10 @@ function TabButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      style={{
-        border: "1px solid transparent",
-        background: active ? "#fff" : "transparent",
-        padding: "8px 12px",
-        margin: 0,
-        cursor: "pointer",
-        fontSize: 13,
-        fontWeight: active ? 600 : 500,
-        color: active ? "#111827" : "#6b7280",
-        borderRadius: 10,
-        boxShadow: active ? "0 1px 2px rgba(0, 0, 0, 0.05)" : "none",
-        borderColor: active ? "#d1d5db" : "transparent",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-start",
-        gap: 2,
-        minWidth: 0,
-      }}
+      className={active ? "rde-tab rde-tab-active" : "rde-tab"}
     >
-      <span style={{ lineHeight: 1.1 }}>{label}</span>
-      {filename ? (
-        <span
-          style={{
-            fontSize: 11,
-            lineHeight: 1.1,
-            color: active ? "#6b7280" : "#bcbcbc",
-            fontWeight: 500,
-          }}
-        >
-          {filename}
-        </span>
-      ) : null}
+      <span className="rde-tab-label">{label}</span>
+      {filename ? <span className="rde-tab-filename">{filename}</span> : null}
     </button>
   );
 }
@@ -178,40 +139,17 @@ function IframePreview({
   }, []);
 
   return (
-    <div style={{ minWidth: 0 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          padding: "10px 12px",
-          borderBottom: "1px solid #e5e7eb",
-          background: "#fafafa",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: "#111827",
-          }}
-        >
-          {title}
-        </div>
+    <div className="rde-preview">
+      <div className="rde-preview-header">
+        <div className="rde-preview-title">{title}</div>
       </div>
 
       <iframe
         ref={iframeRef}
         title={title}
         srcDoc={srcDoc}
-        style={{
-          display: "block",
-          width: "100%",
-          height,
-          border: 0,
-          background: "transparent",
-        }}
+        className="rde-preview-frame"
+        style={{ height }}
       />
 
       {mountNode ? createPortal(children, mountNode) : null}
@@ -234,63 +172,13 @@ export function ReactDevStyleExample({
   const code = activeFile?.code ?? "";
 
   return (
-    <section
-      style={{
-        margin: "24px 0",
-        border: "1px solid #e5e7eb",
-        borderRadius: 18,
-        overflow: "hidden",
-        background: "#fff",
-        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
-      }}
-      
-    >
-      {title ? (
-        <div
-          style={{
-            padding: "12px 16px",
-            borderBottom: "1px solid #e5e7eb",
-            fontSize: 15,
-            fontWeight: 600,
-            color: "#111827",
-          }}
-        >
-          {title}
-        </div>
-      ) : null}
+    <section className="rde">
+      {title ? <div className="rde-title">{title}</div> : null}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.1fr)",
-          gap: 0,
-        }}
-      >
-        <div
-          style={{
-            minWidth: 0,
-            borderRight: "1px solid #e5e7eb",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              padding: "10px 12px",
-              borderBottom: "1px solid #e5e7eb",
-              background: "#fafafa",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-                alignItems: "stretch",
-              }}
-            >
+      <div className="rde-grid">
+        <div className="rde-code-panel">
+          <div className="rde-toolbar">
+            <div className="rde-tabs">
               {files.map((file) => (
                 <TabButton
                   key={file.tab}
@@ -305,7 +193,7 @@ export function ReactDevStyleExample({
             <CopyButton text={code} />
           </div>
 
-          <div style={{ minWidth: 0 }}>
+          <div className="rde-code">
             <DynamicCodeBlock
               lang={activeFile?.lang ?? "tsx"}
               code={code}
@@ -324,15 +212,204 @@ export function ReactDevStyleExample({
         </IframePreview>
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
+        .rde {
+          --rde-border: #e5e7eb;
+          --rde-surface: #ffffff;
+          --rde-surface-2: #fafafa;
+          --rde-text: #111827;
+          --rde-muted: #6b7280;
+          --rde-faint: #9ca3af;
+          --rde-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+          --rde-tab-active-border: #d1d5db;
+          --rde-tab-active-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+          --rde-tab-active-bg: #ffffff;
+          --rde-copy-bg: #ffffff;
+          --rde-copy-hover: #f9fafb;
+          --rde-copy-text: #111827;
+          margin: 24px 0;
+          border: 1px solid var(--rde-border);
+          border-radius: 18px;
+          overflow: hidden;
+          background: var(--rde-surface);
+          box-shadow: var(--rde-shadow);
+          color-scheme: light;
+        }
+
+        :global(html.dark) .rde,
+        :global(html[data-theme="dark"]) .rde,
+        :global(body.dark) .rde,
+        :global(body[data-theme="dark"]) .rde {
+          --rde-border: #292929;
+          --rde-surface: #ffffff;
+          --rde-surface-2: #2e2e2e;
+          --rde-text: #e5e7eb;
+          --rde-muted: #94a3b8;
+          --rde-faint: #B8B8B8;
+          --rde-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+          --rde-tab-active-border: #292929;
+          --rde-tab-active-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+          --rde-tab-active-bg: #121212;
+          --rde-copy-bg: #121212;
+          --rde-copy-hover: #292929;
+          --rde-copy-text: #b8b8b8;
+          color-scheme: dark;
+        }
+
+        .rde-title {
+          padding: 12px 16px;
+          border-bottom: 1px solid var(--rde-border);
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--rde-text);
+          background: var(--rde-surface);
+        }
+
+        .rde-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+          gap: 0;
+          background: var(--rde-surface);
+        }
+
+        .rde-code-panel {
+          min-width: 0;
+          border-right: 1px solid var(--rde-border);
+          background: var(--rde-surface);
+        }
+
+        .rde-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 10px 12px;
+          border-bottom: 1px solid var(--rde-border);
+          background: var(--rde-surface-2);
+        }
+
+        .rde-tabs {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          align-items: stretch;
+          min-width: 0;
+        }
+
+        .rde-tab {
+          border: 1px solid transparent;
+          background: transparent;
+          padding: 8px 12px;
+          margin: 0;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--rde-muted);
+          border-radius: 10px;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 2px;
+          min-width: 0;
+          transition:
+            background-color 0.15s ease,
+            border-color 0.15s ease,
+            color 0.15s ease,
+            box-shadow 0.15s ease;
+        }
+
+        .rde-tab:hover {
+          background: var(--rde-copy-hover);
+          color: var(--rde-text);
+        }
+
+        .rde-tab-active {
+          background: var(--rde-tab-active-bg);
+          color: var(--rde-text);
+          border-color: var(--rde-tab-active-border);
+          box-shadow: var(--rde-tab-active-shadow);
+          font-weight: 600;
+        }
+
+        .rde-tab-label {
+          line-height: 1.1;
+        }
+
+        .rde-tab-filename {
+          font-size: 11px;
+          line-height: 1.1;
+          color: var(--rde-faint);
+          font-weight: 500;
+        }
+
+        .rde-copy {
+          border: 1px solid var(--rde-border);
+          border-radius: 10px;
+          padding: 8px 10px;
+          font-size: 13px;
+          line-height: 1;
+          background: var(--rde-copy-bg);
+          cursor: pointer;
+          color: var(--rde-copy-text);
+          white-space: nowrap;
+          box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03);
+          transition:
+            background-color 0.15s ease,
+            border-color 0.15s ease,
+            color 0.15s ease;
+        }
+
+        .rde-copy:hover {
+          background: var(--rde-copy-hover);
+        }
+
+        .rde-code {
+          min-width: 0;
+        }
+
+        .rde-preview {
+          min-width: 0;
+          background: var(--rde-surface);
+        }
+
+        .rde-preview-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 10px 12px;
+          border-bottom: 1px solid var(--rde-border);
+          background: var(--rde-surface-2);
+        }
+
+        .rde-preview-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--rde-text);
+        }
+
+        .rde-preview-frame {
+          display: block;
+          width: 100%;
+          border: 0;
+          background: transparent;
+        }
+
         @media (max-width: 900px) {
-          section > div {
-            grid-template-columns: 1fr !important;
+          .rde-grid {
+            grid-template-columns: 1fr;
           }
 
-          section > div > div:first-child {
-            border-right: none !important;
-            border-bottom: 1px solid #e5e7eb;
+          .rde-code-panel {
+            border-right: none;
+            border-bottom: 1px solid var(--rde-border);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .rde-tab,
+          .rde-copy {
+            transition: none;
           }
         }
       `}</style>

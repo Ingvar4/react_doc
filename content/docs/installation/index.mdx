@@ -29,11 +29,13 @@ import { Example5 } from '../../../examples/example copy 5';
   label: '',
   filename: 'App.js',
   lang: 'tsx',
-  code: String.raw`import { useState } from 'react';
+  code: String.raw`function Greeting({ name }) {
+    return <h1>Hello, {name}</h1>;
+  }
 
-export default function Gallery() {
-    const [index, setIndex] = useState(0);
-}`,
+  export default function App() {
+    return <Greeting name="world" />
+  }`,
   },
   ]}
 >
