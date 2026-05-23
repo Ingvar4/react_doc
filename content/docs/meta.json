@@ -1,4 +1,7 @@
 {
+  "title": "Name of Folder",
+  "description": "The description of root folder (optional)",
+  "root": true,
   "pages": [ 
     "---НАЧАЛО РАБОТЫ С REACT---", 
     "learn", 
