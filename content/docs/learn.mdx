@@ -515,7 +515,7 @@ import { Example3 } from '../../examples/example copy 3';
 
 ## Использование Хуков
 
-Функции, начинающиеся с `use`, называются *хуками*. `useState` — это встроенный хук, предоставляемый React. Другие встроенные хуки можно найти в [справочнике API](/reference/react). Вы также можете писать свои собственные хуки, комбинируя существующие.
+Функции, начинающиеся с `use`, называются *хуками*. `useState` — это встроенный хук, предоставляемый React. Другие встроенные хуки можно найти в справочнике API. Вы также можете писать свои собственные хуки, комбинируя существующие.
 
 Хуки более ограничены, чем другие функции. Вы можете вызывать хуки только *в самом начале* ваших компонентов (или других хуков). Если вы хотите использовать `useState` в условии или цикле, выделите новый компонент и поместите его туда.
 
@@ -607,34 +607,6 @@ function MyButton({ count, onClick }) {
 ```
 
 При нажатии кнопки срабатывает обработчик `onClick`. Свойство `onClick` каждой кнопки было установлено в функцию `handleClick` внутри `MyApp`, поэтому выполняется код внутри неё. Этот код вызывает `setCount(count + 1)`, увеличивая переменную состояния `count`. Новое значение `count` передаётся в качестве свойства каждой кнопке, поэтому все они отображают новое значение. Это называется «поднятием состояния вверх». Перемещая состояние вверх, вы делитесь им между компонентами.
-
-{/* <Sandpack code={
-`import { useState } from 'react';
-
-  export default function MyApp() {
-    const [count, setCount] = useState(0);
-
-    function handleClick() {
-      setCount(count + 1);
-    }
-
-    return (
-      <div>
-        <h1>Counters that update together</h1>
-        <MyButton count={count} onClick={handleClick} />
-        <MyButton count={count} onClick={handleClick} />
-      </div>
-    );
-  }
-
-  function MyButton({ count, onClick }) {
-    return (
-      <button onClick={onClick}>
-        Clicked {count} times
-      </button>
-    );
-  }`}
-/> */}
 
 import { Example4 } from '../../examples/example copy 4';
 

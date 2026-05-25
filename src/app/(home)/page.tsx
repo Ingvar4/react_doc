@@ -211,14 +211,15 @@ export default function HomePage() {
                   Изучать React
                 </button>
               </Link>
-
-              <button
-                className={`px-8 py-4 border-2 border-gray-600 rounded-lg font-semibold text-gray-300 hover:text-white hover:border-white hover:scale-105 transition-all duration-300 active:scale-95 ${
-                  !isMobile ? "cursor-none" : ""
-                }`}
-              >
-                API Reference
-              </button>
+              <Link href={"/docs/react"}>
+                <button
+                  className={`px-8 py-4 border-2 border-gray-600 rounded-lg font-semibold text-gray-300 hover:text-white hover:border-white hover:scale-105 transition-all duration-300 active:scale-95 ${
+                    !isMobile ? "cursor-none" : ""
+                  }`}
+                >
+                  API Reference
+                </button>
+              </Link>
             </div>
           </div>
         </div>

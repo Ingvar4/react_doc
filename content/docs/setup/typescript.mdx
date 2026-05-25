@@ -6,10 +6,10 @@ description: TypeScript — популярный способ добавлени
 <Callout>
 ### Вы узнаете про[!toc]
 
-* [TypeScript с компонентами React](/learn/typescript#typescript-with-react-components)
-* [Примеры типизации с использованием хуков](/learn/typescript#example-hooks)
-* [Распространенные типы из `@types/react`](/learn/typescript#useful-types)
-* [Дополнительные ресурсы для обучения](/learn/typescript#further-learning)
+* TypeScript с компонентами React
+* Примеры типизации с использованием хуков
+* Распространенные типы из `@types/react`
+* Дополнительные ресурсы для обучения
 
 </Callout>
 
@@ -48,24 +48,7 @@ npm install --save-dev @types/react @types/react-dom
 
 Написание TypeScript с React очень похоже на написание JavaScript с React. Ключевое отличие при работе с компонентом заключается в том, что вы можете задавать типы для пропсов вашего компонента. Эти типы можно использовать для проверки корректности и предоставления встроенной документации в редакторах.
 
-Возьмем [компонент `MyButton`](/learn#components) из руководства [«Быстрый старт»](/learn) и добавим тип, описывающий `title` для кнопки:
-
-{/* <Sandpack code={
-`function MyButton({ title }: { title: string }) {
-    return (
-      <button>{title}</button>
-    );
-  }
-
-  export default function MyApp() {
-    return (
-      <div>
-        <h1>Welcome to my app</h1>
-        <MyButton title="Я кнопка" />
-      </div>
-    );
-  }`}
-/> */}
+Возьмем компонент `MyButton` из руководства «Быстрый старт» и добавим тип, описывающий `title` для кнопки:
 
 ```js
 function MyButton({ title }: { title: string }) {
@@ -120,7 +103,7 @@ export default function MyApp() {
 
 ### `useState` 
 
-Хук [`useState`](/reference/react/useState) будет повторно использовать значение, переданное в качестве начального состояния, чтобы определить, каким должен быть тип этого значения. Например:
+Хук `useState` будет повторно использовать значение, переданное в качестве начального состояния, чтобы определить, каким должен быть тип этого значения. Например:
 
 ```ts
 // Вывести тип как «boolean»
@@ -142,7 +125,7 @@ type Status = «idle» | «loading» | „success“ | «error»;
 const [status, setStatus] = useState<Status>(«idle»);
 ```
 
-Или, как рекомендуется в [Принципах структурирования состояния](/learn/choosing-the-state-structure#principles-for-structuring-state), вы можете сгруппировать связанные состояния в объект и описать различные возможности с помощью типов объектов:
+Или, вы можете сгруппировать связанные состояния в объект и описать различные возможности с помощью типов объектов:
 
 ```ts
 type RequestState =
@@ -156,48 +139,7 @@ const [requestState, setRequestState] = useState<RequestState>({ status: „idle
 
 ### `useReducer`
 
-Хук [`useReducer`](/reference/react/useReducer) — это более сложный хук, который принимает функцию-редуктор и начальное состояние. Типы для функции-редуктора выводятся из начального состояния. Вы можете опционально предоставить аргумент типа при вызове `useReducer`, чтобы задать тип для состояния, но часто лучше вместо этого задать тип в начальном состоянии:
-
-{/* <Sandpack code={
-`import {useReducer} from 'react';
-  interface State {
-    count: number
-  };
-
-  type CounterAction =
-    | { type: 'reset' }
-    | { type: 'setCount'; value: State['count'] }
-
-  const initialState: State = { count: 0 };
-
-  function stateReducer(state: State, action: CounterAction): State {
-    switch (action.type) {
-      case 'reset':
-        return initialState;
-      case 'setCount':
-        return { ...state, count: action.value };
-      default:
-        throw new Error('Unknown action');
-    }
-  }
-
-  export default function App() {
-    const [state, dispatch] = useReducer(stateReducer, initialState);
-
-    const addFive = () => dispatch({ type: 'setCount', value: state.count + 5 });
-    const reset = () => dispatch({ type: 'reset' });
-
-    return (
-      <div>
-        <h1>Добро пожаловать в мой счетчик</h1>
-
-        <p>Счет: {state.count}</p>
-        <button onClick={addFive}>Добавить 5</button>
-        <button onClick={reset}>Сбросить</button>
-      </div>
-    );
-  }`}
-/> */}
+Хук `useReducer` — это более сложный хук, который принимает функцию-редуктор и начальное состояние. Типы для функции-редуктора выводятся из начального состояния. Вы можете опционально предоставить аргумент типа при вызове `useReducer`, чтобы задать тип для состояния, но часто лучше вместо этого задать тип в начальном состоянии:
 
 import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
 import { Example6 } from '../../../examples/example copy 6';
@@ -279,7 +221,7 @@ export default function App() {
 
 ### `useContext` 
 
-Хук [`useContext`](/reference/react/useContext) — это способ передачи данных вниз по дереву компонентов без необходимости передачи пропсов через компоненты. Он используется путем создания компонента-провайдера и, зачастую, путем создания хука для использования значения в дочернем компоненте.
+Хук `useContext` — это способ передачи данных вниз по дереву компонентов без необходимости передачи пропсов через компоненты. Он используется путем создания компонента-провайдера и, зачастую, путем создания хука для использования значения в дочернем компоненте.
 
 Тип значения, предоставляемого контекстом, определяется на основе значения, переданного при вызове `createContext`:
 
@@ -328,9 +270,6 @@ import { Example7 } from '../../../examples/example copy 7';
 >
   <Example7 />
 </ReactDevStyleExample>
-
-
-
 
 Этот прием работает, когда у вас есть смысловое значение по умолчанию, но иногда бывают случаи, когда его нет, и в таких случаях `null` может показаться разумным значением по умолчанию. Однако, чтобы система типов могла понять ваш код, вам нужно явно задать `ContextShape | null` в `createContext`.
 
@@ -382,7 +321,7 @@ function MyComponent() {
 автоматически запоминает значения и функции, уменьшая необходимость в ручных вызовах `useMemo`. Вы можете использовать компилятор для автоматической обработки запоминания.
 </Callout>
 
-Хук [`useMemo`](/reference/react/useMemo) создает или повторно получает доступ к запомненному значению из вызова функции, повторно запуская функцию только в том случае, если изменились зависимости, переданные в качестве второго параметра. Результат вызова хука выводится из возвращаемого значения функции в первом параметре. Вы можете сделать это более явно, предоставив аргумент типа хуку.
+Хук `useMemo` создает или повторно получает доступ к запомненному значению из вызова функции, повторно запуская функцию только в том случае, если изменились зависимости, переданные в качестве второго параметра. Результат вызова хука выводится из возвращаемого значения функции в первом параметре. Вы можете сделать это более явно, предоставив аргумент типа хуку.
 
 ```ts
 // Тип visibleTodos выводится из возвращаемого значения filterTodos
@@ -392,11 +331,11 @@ const visibleTodos = useMemo(() => filterTodos(todos, tab), [todos, tab]);
 ### `useCallback` {/*typing-usecallback*/}
 
 <Callout>
-[React Compiler](/learn/react-compiler)  
+React Compiler
 автоматически мемоизирует значения и функции, уменьшая необходимость в ручных вызовах `useCallback`. Вы можете использовать компилятор для автоматической обработки мемоизации.
 </Callout>
 
-[`useCallback`](/reference/react/useCallback) предоставляет стабильную ссылку на функцию, пока зависимости, переданные во второй параметр, остаются неизменными. Как и в случае с `useMemo`, тип функции выводится из возвращаемого значения функции в первом параметре, и вы можете сделать его более явным, указав аргумент типа в хуке.
+`useCallback` предоставляет стабильную ссылку на функцию, пока зависимости, переданные во второй параметр, остаются неизменными. Как и в случае с `useMemo`, тип функции выводится из возвращаемого значения функции в первом параметре, и вы можете сделать его более явным, указав аргумент типа в хуке.
 
 
 ```ts
@@ -435,25 +374,6 @@ export default function Form() {
 ### События DOM 
 
 При работе с событиями DOM в React тип события часто можно определить по обработчику событий. Однако, если вы хотите извлечь функцию для передачи в обработчик событий, вам нужно явно указать тип события.
-
-{/* <Sandpack code={
-`import { useState } from 'react';
-
-  export default function Form() {
-    const [value, setValue] = useState('Change me');
-
-    function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
-      setValue(event.currentTarget.value);
-    }
-
-    return (
-      <>
-        <input value={value} onChange={handleChange} />
-        <p>Value: {value}</p>
-      </>
-    );
-  }`}
-/> */}
 
 import { Example8 } from '../../../examples/example copy 8';
 
