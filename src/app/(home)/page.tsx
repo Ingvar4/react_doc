@@ -202,7 +202,7 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link href={"/docs"}>
+              <Link href={"/docs/learn"}>
                 <button
                   className={`px-8 py-4 bg-white text-black rounded-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-white/20 active:scale-95 ${
                     !isMobile ? "cursor-none" : ""

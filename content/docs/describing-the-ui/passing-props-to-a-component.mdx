@@ -16,29 +16,6 @@ description: Компоненты React используют *пропсы* дл
 
 Props — это информация, которую вы передаете тегу JSX. Например, `className`, `src`, `alt`, `width` и `height` — это некоторые из пропсов, которые вы можете передать в `<img>`:
 
-{/* <Sandpack code={
-`function Avatar() {
-    return (
-      <img
-        className="avatar"
-        src="https://react.dev/images/docs/scientists/1bX5QH6.jpg"
-        alt="Lin Lanying"
-        style={{
-          margin: '20px', 
-          borderRadius: "50%",
-          height: '120px'
-        }}
-      />
-    );
-  }
-
-  export default function Profile() {
-    return (
-      <Avatar />
-    );
-  }`}
-/> */}
-
 import { ReactDevStyleExample } from '../../../components/react_dev_style_example';
 import { Example25 } from '../../../examples/example copy 25';
 
@@ -112,7 +89,7 @@ export default function Profile() {
 
 <Callout type='idea'>
 Если двойные фигурные скобки после `person=` сбивают вас с толку, вспомните 
-[что это просто объект](/learn/javascript-in-jsx-with-curly-braces#using-double-curlies-css-and-other-objects-in-jsx) внутри фигурных скобок JSX.
+[что это просто объект](/docs/describing-the-ui/javascript-in-jsx-with-curly-braces#using-double-curlies-css-and-other-objects-in-jsx) внутри фигурных скобок JSX.
 </Callout>
 
 Теперь вы можете прочитать эти пропсы внутри компонента `Avatar`.
@@ -428,7 +405,7 @@ import { Example27 } from '../../../examples/example copy 27';
 
 **Не пытайтесь «изменять props».**
  
-Когда вам нужно отреагировать на ввод пользователя (например, изменить выбранный цвет), вам нужно будет «установить состояние», о чем вы можете узнать в [Состояние: память компонента.](/learn/state-a-components-memory)
+Когда вам нужно отреагировать на ввод пользователя (например, изменить выбранный цвет), вам нужно будет «установить состояние», о чем вы можете узнать в [Состояние: память компонента.](/docs/adding-interactivity/state-a-components-memory)
 
 
 ## Вывод

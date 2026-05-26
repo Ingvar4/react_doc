@@ -228,8 +228,8 @@ export function ReactDevStyleExample({
           --rde-copy-hover: #f9fafb;
           --rde-copy-text: #111827;
           margin: 24px 0;
-          border: 1px solid var(--rde-border);
-          border-radius: 18px;
+          border: 3px solid var(--rde-border);
+          border-radius: 5px; //18
           overflow: hidden;
           background: var(--rde-surface);
           box-shadow: var(--rde-shadow);
@@ -380,6 +380,7 @@ export function ReactDevStyleExample({
           padding: 10px 12px;
           border-bottom: 1px solid var(--rde-border);
           background: var(--rde-surface-2);
+          min-height: 53px;
         }
 
         .rde-preview-title {

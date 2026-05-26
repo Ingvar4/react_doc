@@ -134,27 +134,6 @@ export default function TodoList() {
 
 Если у вас есть такой HTML-код, вы можете исправить его с помощью [конвертера](https://transform.tools/html-to-jsx):
 
-{/* <Sandpack code={
-`export default function TodoList() {
-    return (
-      <>
-        <h1>Задачи Хеди Ламарр</h1>
-        <img
-          src="https://react.dev/images/docs/scientists/yXOvdOSs.jpg"
-          alt='Hedy Lamarr'
-          className="photo"
-          style={{height: '90px'}}
-        />
-        <ul>
-          <li>Изобрести новые светофоры</li>
-          <li>Репетировать сцену из фильма</li>
-          <li>Усовершенствовать технологию спектра</li>
-        </ul>
-      </>
-    );
-  }`}
-/> */}
-
 import { Example11 } from '../../../examples/example copy 11';
 
 <ReactDevStyleExample
@@ -194,35 +173,6 @@ import { Example11 } from '../../../examples/example copy 11';
 ## JavaScript в JSX с фигурными скобками {/*javascript-in-jsx-with-curly-braces*/}
 JSX позволяет писать разметку, похожую на HTML, внутри файла JavaScript, сохраняя логику рендеринга и контент в одном месте. Иногда вам захочется добавить немного логики JavaScript или сослаться на динамическое свойство внутри этой разметки. В этой ситуации вы можете использовать фигурные скобки в JSX, чтобы 'открыть окно' в JavaScript:
 
-{/* <Sandpack code={
-`const person = {
-    name: 'Gregorio Y. Zara',
-    theme: {
-      backgroundColor: 'black',
-      color: 'pink'
-    } 
-  };
-  export default function TodoList() {
-    return (
-      <div style={person.theme}>
-        <div style={{padding: '20px'}}>
-          <h1>Задачи {person.name}</h1>
-          <img
-            className="avatar"
-            src="https://react.dev/images/docs/scientists/7vQD0fPs.jpg"
-            style={{height: '90px', borderRadius: '50%'}}
-            alt='Gregorio Y. Zara'
-          />
-          <ul>
-            <li>Улучшить видеофон</li>
-            <li>Подготовить лекции по аэронавтике</li>
-            <li>Работать над двигателем, работающим на спирте</li>
-          </ul>
-        </div>
-      </div>
-    );
-  }`}
-/> */}
 import { Example12 } from '../../../examples/example copy 12';
 
 <ReactDevStyleExample
@@ -342,37 +292,6 @@ import { Example13 } from '../../../examples/example copy 13';
 
 Вашим компонентам часто потребуется отображать разные элементы в зависимости от различных условий. В React вы можете условно рендерить JSX, используя синтаксис JavaScript, такой как операторы `if`, `&&` и `? :`.
 В этом примере оператор JavaScript `&&` используется для условного рендеринга галочки:
-
-{/* <Sandpack code={
-`function Item({ name, isPacked }) {
-    return (
-      <li className="item">
-        {name} {isPacked && '✅'}
-      </li>
-    );
-  }
-  export default function PackingList() {
-    return (
-      <section>
-        <h1>Список вещей Салли Райд</h1>
-        <ul>
-          <Item
-            isPacked={true}
-            name="Космический скафандр"
-          />
-          <Item
-            isPacked={true}
-            name="Шлем с золотым листом"
-          />
-          <Item
-            isPacked={false}
-            name="Фото Там"
-          />
-        </ul>
-      </section>
-    );
-  }`}
-/> */}
 
 import { Example14 } from '../../../examples/example copy 14';
 
