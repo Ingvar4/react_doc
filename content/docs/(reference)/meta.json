@@ -5,6 +5,7 @@
   
   "pages": [ 
     "---НАЧАЛО РАБОТЫ С API", 
-    "react"
+    "react",
+    "hooks"
   ]
 }
