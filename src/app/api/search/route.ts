@@ -7,19 +7,7 @@ import { createFromSource } from 'fumadocs-core/search/server';
 //   language: 'english',
 // });
 
-//поисковик + русский
-// export const { GET } = createFromSource(source, {
-//   localeMap: {
-//     ru: { language: 'russian' },
-//     en: { language: 'english' },
-//   },
-// });
 
-//статический поисковик
+// statically cached
 export const revalidate = false;
-export const { staticGET: GET } = createFromSource(source,{
-  localeMap: {
-    ru: { language: 'russian' },
-    en: { language: 'english' },
-  },
-});
+export const { staticGET: GET } = createFromSource(source);
