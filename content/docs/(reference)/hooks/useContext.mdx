@@ -1,0 +1,1327 @@
+---
+title: useContext
+description: useContext — это React Hook, который позволяет читать и подписываться на context из вашего компонента.
+---
+
+```js
+const value = useContext(SomeContext)
+```
+
+## Справка {/*reference*/}
+
+### `useContext(SomeContext)` {/*usecontext*/}
+
+Вызывайте `useContext` на верхнем уровне вашего компонента, чтобы читать и подписываться на [context.](/learn/passing-data-deeply-with-context)
+
+```js
+import { useContext } from 'react';
+
+function MyComponent() {
+  const theme = useContext(ThemeContext);
+  // ...
+```
+
+#### Параметры {/*parameters*/}
+
+* `SomeContext`: context, который вы заранее создали с помощью [`createContext`](/reference/react/createContext). Сам context не хранит данные, он лишь обозначает тип информации, которую вы можете предоставлять или читать из компонентов.
+
+#### Возвращаемое значение {/*returns*/}
+
+`useContext` возвращает значение context для компонента, который его вызывает. Оно определяется как `value`, переданное ближайшему `SomeContext` выше вызывающего компонента в дереве. Если такого provider нет, возвращаемым значением будет `defaultValue`, который вы передали в [`createContext`](/reference/react/createContext) для этого context. Возвращаемое значение всегда актуально. React автоматически повторно рендерит компоненты, которые читают некоторый context, если он изменяется.
+
+#### Предостережения {/*caveats*/}
+
+* Вызов `useContext()` в компоненте не зависит от providers, возвращённых *тем же* компонентом. Соответствующий `<Context>` **должен находиться *выше*** компонента, который вызывает `useContext()`.
+* React **автоматически повторно рендерит** всех детей, которые используют конкретный context, начиная с provider, который получает другое `value`. Предыдущее и новое значения сравниваются с помощью сравнения [`Object.is`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is). Пропуск повторных рендеров с помощью [`memo`](/reference/react/memo) не мешает детям получать свежие значения context.
+* Если ваша система сборки создаёт дублирующиеся модули в output (такое может случиться с symlinks), это может сломать context. Передача чего-либо через context работает только если `SomeContext`, который вы используете для предоставления context, и `SomeContext`, который вы используете для его чтения, — это ***точно* один и тот же объект**, что определяется сравнением `===`.
+
+---
+
+## Использование {/*usage*/}
+
+
+### Передача данных глубоко в дерево {/*passing-data-deeply-into-the-tree*/}
+
+Вызывайте `useContext` на верхнем уровне вашего компонента, чтобы читать и подписываться на [context.](/learn/passing-data-deeply-with-context)
+
+```js 
+import { useContext } from 'react';
+
+function Button() {
+  const theme = useContext(ThemeContext);
+  // ...
+```
+
+`useContext` возвращает значение context для context, который вы передали. Чтобы определить значение context, React ищет дерево компонентов и находит **ближайший provider context выше** для этого конкретного context.
+
+Чтобы передать context в `Button`, оберните его или один из его родительских компонентов в соответствующий provider context:
+
+```js 
+function MyPage() {
+  return (
+    <ThemeContext value="dark">
+      <Form />
+    </ThemeContext>
+  );
+}
+
+function Form() {
+  // ... renders buttons inside ...
+}
+```
+
+Неважно, сколько уровней компонентов находится между provider и `Button`. Когда `Button` *где угодно* внутри `Form` вызывает `useContext(ThemeContext)`, он получит `"dark"` в качестве значения.
+
+<Callout type='idea'>
+
+`useContext()` всегда ищет ближайший provider *выше* компонента, который его вызывает. Он ищет наверх и **не** учитывает providers в компоненте, из которого вы вызываете `useContext()`.
+
+</Callout>
+
+```js tab="Tab 1"
+import { createContext, useContext } from 'react';
+
+const ThemeContext = createContext(null);
+
+export default function MyApp() {
+  return (
+    <ThemeContext value="dark">
+      <Form />
+    </ThemeContext>
+  )
+}
+
+function Form() {
+  return (
+    <Panel title="Welcome">
+      <Button>Sign up</Button>
+      <Button>Log in</Button>
+    </Panel>
+  );
+}
+
+function Panel({ title, children }) {
+  const theme = useContext(ThemeContext);
+  const className = 'panel-' + theme;
+  return (
+    <section className={className}>
+      <h1>{title}</h1>
+      {children}
+    </section>
+  )
+}
+
+function Button({ children }) {
+  const theme = useContext(ThemeContext);
+  const className = 'button-' + theme;
+  return (
+    <button className={className}>
+      {children}
+    </button>
+  );
+}
+```
+
+```js tab="Tab 2"
+//css
+.panel-light,
+.panel-dark {
+  border: 1px solid black;
+  border-radius: 4px;
+  padding: 20px;
+}
+.panel-light {
+  color: #222;
+  background: #fff;
+}
+
+.panel-dark {
+  color: #fff;
+  background: rgb(23, 32, 42);
+}
+
+.button-light,
+.button-dark {
+  border: 1px solid #777;
+  padding: 5px;
+  margin-right: 10px;
+  margin-top: 10px;
+}
+
+.button-dark {
+  background: #222;
+  color: #fff;
+}
+
+.button-light {
+  background: #fff;
+  color: #222;
+}
+```
+
+---
+
+### Обновление данных, переданных через context {/*updating-data-passed-via-context*/}
+
+Часто хочется, чтобы context изменялся со временем. Чтобы обновлять context, объедините его со [state.](/reference/react/useState) Объявите переменную state в родительском компоненте и передавайте текущее состояние вниз как значение context для provider.
+
+```js 
+function MyPage() {
+  const [theme, setTheme] = useState('dark');
+  return (
+    <ThemeContext value={theme}>
+      <Form />
+      <Button onClick={() => {
+        setTheme('light');
+      }}>
+        Switch to light theme
+      </Button>
+    </ThemeContext>
+  );
+}
+```
+
+Теперь любой `Button` внутри provider будет получать текущее значение `theme`. Если вы вызовете `setTheme`, чтобы обновить значение `theme`, которое передаёте provider, все компоненты `Button` повторно рендерятся с новым значением `'light'`.
+
+#### Обновление значения через context {/*updating-a-value-via-context*/}
+
+В этом примере компонент `MyApp` хранит переменную state, которая затем передаётся в provider `ThemeContext`. Отметка чекбокса "Dark mode" обновляет state. Изменение передаваемого значения повторно рендерит все компоненты, использующие этот context.
+
+```js tab="Tab 1"
+import { createContext, useContext, useState } from 'react';
+
+const ThemeContext = createContext(null);
+
+export default function MyApp() {
+  const [theme, setTheme] = useState('light');
+  return (
+    <ThemeContext value={theme}>
+      <Form />
+      <label>
+        <input
+          type="checkbox"
+          checked={theme === 'dark'}
+          onChange={(e) => {
+            setTheme(e.target.checked ? 'dark' : 'light')
+          }}
+        />
+        Use dark mode
+      </label>
+    </ThemeContext>
+  )
+}
+
+function Form({ children }) {
+  return (
+    <Panel title="Welcome">
+      <Button>Sign up</Button>
+      <Button>Log in</Button>
+    </Panel>
+  );
+}
+
+function Panel({ title, children }) {
+  const theme = useContext(ThemeContext);
+  const className = 'panel-' + theme;
+  return (
+    <section className={className}>
+      <h1>{title}</h1>
+      {children}
+    </section>
+  )
+}
+
+function Button({ children }) {
+  const theme = useContext(ThemeContext);
+  const className = 'button-' + theme;
+  return (
+    <button className={className}>
+      {children}
+    </button>
+  );
+}
+```
+```js tab="Tab 2"
+//css
+.panel-light,
+.panel-dark {
+  border: 1px solid black;
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 10px;
+}
+.panel-light {
+  color: #222;
+  background: #fff;
+}
+
+.panel-dark {
+  color: #fff;
+  background: rgb(23, 32, 42);
+}
+
+.button-light,
+.button-dark {
+  border: 1px solid #777;
+  padding: 5px;
+  margin-right: 10px;
+  margin-top: 10px;
+}
+
+.button-dark {
+  background: #222;
+  color: #fff;
+}
+
+.button-light {
+  background: #fff;
+  color: #222;
+}
+```
+
+Обратите внимание: `value="dark"` передаёт строку `"dark"`, а `value={theme}` передаёт значение JavaScript-переменной `theme` с помощью [JSX curly braces.](/learn/javascript-in-jsx-with-curly-braces) Curly braces также позволяют передавать значения context, которые не являются строками.
+
+#### Обновление объекта через context {/*updating-an-object-via-context*/}
+
+В этом примере есть переменная state `currentUser`, которая хранит объект. Вы объединяете `{ currentUser, setCurrentUser }` в один объект и передаёте его через context внутри `value={}`. Это позволяет любому компоненту ниже, например `LoginButton`, читать и `currentUser`, и `setCurrentUser`, а затем вызывать `setCurrentUser`, когда это нужно.
+
+```js tab="Tab 1"
+import { createContext, useContext, useState } from 'react';
+
+const CurrentUserContext = createContext(null);
+
+export default function MyApp() {
+  const [currentUser, setCurrentUser] = useState(null);
+  return (
+    <CurrentUserContext
+      value={{
+        currentUser,
+        setCurrentUser
+      }}
+    >
+      <Form />
+    </CurrentUserContext>
+  );
+}
+
+function Form({ children }) {
+  return (
+    <Panel title="Welcome">
+      <LoginButton />
+    </Panel>
+  );
+}
+
+function LoginButton() {
+  const {
+    currentUser,
+    setCurrentUser
+  } = useContext(CurrentUserContext);
+
+  if (currentUser !== null) {
+    return <p>You logged in as {currentUser.name}.</p>;
+  }
+
+  return (
+    <Button onClick={() => {
+      setCurrentUser({ name: 'Advika' })
+    }}>Log in as Advika</Button>
+  );
+}
+
+function Panel({ title, children }) {
+  return (
+    <section className="panel">
+      <h1>{title}</h1>
+      {children}
+    </section>
+  )
+}
+
+function Button({ children, onClick }) {
+  return (
+    <button className="button" onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+```
+```js tab="Tab 2"
+//css
+label {
+  display: block;
+}
+
+.panel {
+  border: 1px solid black;
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 10px;
+}
+
+.button {
+  border: 1px solid #777;
+  padding: 5px;
+  margin-right: 10px;
+  margin-top: 10px;
+}
+```
+
+#### Несколько context {/*multiple-contexts*/}
+
+В этом примере есть два независимых context. `ThemeContext` предоставляет текущую тему, которая является строкой, тогда как `CurrentUserContext` хранит объект, представляющий текущего пользователя.
+
+```js tab="Tab 1"
+import { createContext, useContext, useState } from 'react';
+
+const ThemeContext = createContext(null);
+const CurrentUserContext = createContext(null);
+
+export default function MyApp() {
+  const [theme, setTheme] = useState('light');
+  const [currentUser, setCurrentUser] = useState(null);
+  return (
+    <ThemeContext value={theme}>
+      <CurrentUserContext
+        value={{
+          currentUser,
+          setCurrentUser
+        }}
+      >
+        <WelcomePanel />
+        <label>
+          <input
+            type="checkbox"
+            checked={theme === 'dark'}
+            onChange={(e) => {
+              setTheme(e.target.checked ? 'dark' : 'light')
+            }}
+          />
+          Use dark mode
+        </label>
+      </CurrentUserContext>
+    </ThemeContext>
+  )
+}
+
+function WelcomePanel({ children }) {
+  const {currentUser} = useContext(CurrentUserContext);
+  return (
+    <Panel title="Welcome">
+      {currentUser !== null ?
+        <Greeting /> :
+        <LoginForm />
+      }
+    </Panel>
+  );
+}
+
+function Greeting() {
+  const {currentUser} = useContext(CurrentUserContext);
+  return (
+    <p>You logged in as {currentUser.name}.</p>
+  )
+}
+
+function LoginForm() {
+  const {setCurrentUser} = useContext(CurrentUserContext);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const canLogin = firstName.trim() !== '' && lastName.trim() !== '';
+  return (
+    <>
+      <label>
+        First name{': '}
+        <input
+          required
+          value={firstName}
+          onChange={e => setFirstName(e.target.value)}
+        />
+      </label>
+      <label>
+        Last name{': '}
+        <input
+        required
+          value={lastName}
+          onChange={e => setLastName(e.target.value)}
+        />
+      </label>
+      <Button
+        disabled={!canLogin}
+        onClick={() => {
+          setCurrentUser({
+            name: firstName + ' ' + lastName
+          });
+        }}
+      >
+        Log in
+      </Button>
+      {!canLogin && <i>Fill in both fields.</i>}
+    </>
+  );
+}
+
+function Panel({ title, children }) {
+  const theme = useContext(ThemeContext);
+  const className = 'panel-' + theme;
+  return (
+    <section className={className}>
+      <h1>{title}</h1>
+      {children}
+    </section>
+  )
+}
+
+function Button({ children, disabled, onClick }) {
+  const theme = useContext(ThemeContext);
+  const className = 'button-' + theme;
+  return (
+    <button
+      className={className}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+```
+
+```js tab="Tab 2"
+//css
+label {
+  display: block;
+}
+
+.panel-light,
+.panel-dark {
+  border: 1px solid black;
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 10px;
+}
+.panel-light {
+  color: #222;
+  background: #fff;
+}
+
+.panel-dark {
+  color: #fff;
+  background: rgb(23, 32, 42);
+}
+
+.button-light,
+.button-dark {
+  border: 1px solid #777;
+  padding: 5px;
+  margin-right: 10px;
+  margin-top: 10px;
+}
+
+.button-dark {
+  background: #222;
+  color: #fff;
+}
+
+.button-light {
+  background: #fff;
+  color: #222;
+}
+```
+
+#### Вынесение providers в отдельный компонент {/*extracting-providers-to-a-component*/}
+
+По мере роста приложения обычно появляется "пирамида" context ближе к корню приложения. В этом нет ничего плохого. Однако если вам не нравится такая вложенность с точки зрения визуальной структуры, можно вынести providers в один компонент. В этом примере `MyProviders` скрывает всю "обвязку" и рендерит переданные ему children внутри необходимых providers. Обратите внимание, что state `theme` и `setTheme` нужен самому `MyApp`, поэтому `MyApp` по-прежнему владеет этой частью state.
+
+```js tab="Tab 1"
+
+import { createContext, useContext, useState } from 'react';
+
+const ThemeContext = createContext(null);
+const CurrentUserContext = createContext(null);
+
+export default function MyApp() {
+  const [theme, setTheme] = useState('light');
+  return (
+    <MyProviders theme={theme} setTheme={setTheme}>
+      <WelcomePanel />
+      <label>
+        <input
+          type="checkbox"
+          checked={theme === 'dark'}
+          onChange={(e) => {
+            setTheme(e.target.checked ? 'dark' : 'light')
+          }}
+        />
+        Use dark mode
+      </label>
+    </MyProviders>
+  );
+}
+
+function MyProviders({ children, theme, setTheme }) {
+  const [currentUser, setCurrentUser] = useState(null);
+  return (
+    <ThemeContext value={theme}>
+      <CurrentUserContext
+        value={{
+          currentUser,
+          setCurrentUser
+        }}
+      >
+        {children}
+      </CurrentUserContext>
+    </ThemeContext>
+  );
+}
+
+function WelcomePanel({ children }) {
+  const {currentUser} = useContext(CurrentUserContext);
+  return (
+    <Panel title="Welcome">
+      {currentUser !== null ?
+        <Greeting /> :
+        <LoginForm />
+      }
+    </Panel>
+  );
+}
+
+function Greeting() {
+  const {currentUser} = useContext(CurrentUserContext);
+  return (
+    <p>You logged in as {currentUser.name}.</p>
+  )
+}
+
+function LoginForm() {
+  const {setCurrentUser} = useContext(CurrentUserContext);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const canLogin = firstName !== '' && lastName !== '';
+  return (
+    <>
+      <label>
+        First name{': '}
+        <input
+          required
+          value={firstName}
+          onChange={e => setFirstName(e.target.value)}
+        />
+      </label>
+      <label>
+        Last name{': '}
+        <input
+        required
+          value={lastName}
+          onChange={e => setLastName(e.target.value)}
+        />
+      </label>
+      <Button
+        disabled={!canLogin}
+        onClick={() => {
+          setCurrentUser({
+            name: firstName + ' ' + lastName
+          });
+        }}
+      >
+        Log in
+      </Button>
+      {!canLogin && <i>Fill in both fields.</i>}
+    </>
+  );
+}
+
+function Panel({ title, children }) {
+  const theme = useContext(ThemeContext);
+  const className = 'panel-' + theme;
+  return (
+    <section className={className}>
+      <h1>{title}</h1>
+      {children}
+    </section>
+  )
+}
+
+function Button({ children, disabled, onClick }) {
+  const theme = useContext(ThemeContext);
+  const className = 'button-' + theme;
+  return (
+    <button
+      className={className}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+```
+
+```js tab="Tab 2"
+//css
+label {
+  display: block;
+}
+
+.panel-light,
+.panel-dark {
+  border: 1px solid black;
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 10px;
+}
+.panel-light {
+  color: #222;
+  background: #fff;
+}
+
+.panel-dark {
+  color: #fff;
+  background: rgb(23, 32, 42);
+}
+
+.button-light,
+.button-dark {
+  border: 1px solid #777;
+  padding: 5px;
+  margin-right: 10px;
+  margin-top: 10px;
+}
+
+.button-dark {
+  background: #222;
+  color: #fff;
+}
+
+.button-light {
+  background: #fff;
+  color: #222;
+}
+```
+
+#### Масштабирование с помощью context и reducer {/*scaling-up-with-context-and-a-reducer*/}
+
+В больших приложениях часто используют сочетание context и [reducer](/reference/react/useReducer), чтобы вынести логику, связанную с некоторым state, из компонентов. В этом примере вся "обвязка" скрыта в `TasksContext.js`, который содержит reducer и два отдельных context.
+
+Прочитайте [подробный разбор](/learn/scaling-up-with-reducer-and-context) этого примера.
+
+```js tab="Tab 1"
+//App.js
+import AddTask from './AddTask.js';
+import TaskList from './TaskList.js';
+import { TasksProvider } from './TasksContext.js';
+
+export default function TaskApp() {
+  return (
+    <TasksProvider>
+      <h1>Day off in Kyoto</h1>
+      <AddTask />
+      <TaskList />
+    </TasksProvider>
+  );
+}
+```
+
+```js tab="Tab 2"
+//TasksContext.js
+import { createContext, useContext, useReducer } from 'react';
+
+const TasksContext = createContext(null);
+
+const TasksDispatchContext = createContext(null);
+
+export function TasksProvider({ children }) {
+  const [tasks, dispatch] = useReducer(
+    tasksReducer,
+    initialTasks
+  );
+
+  return (
+    <TasksContext value={tasks}>
+      <TasksDispatchContext value={dispatch}>
+        {children}
+      </TasksDispatchContext>
+    </TasksContext>
+  );
+}
+
+export function useTasks() {
+  return useContext(TasksContext);
+}
+
+export function useTasksDispatch() {
+  return useContext(TasksDispatchContext);
+}
+
+function tasksReducer(tasks, action) {
+  switch (action.type) {
+    case 'added': {
+      return [...tasks, {
+        id: action.id,
+        text: action.text,
+        done: false
+      }];
+    }
+    case 'changed': {
+      return tasks.map(t => {
+        if (t.id === action.task.id) {
+          return action.task;
+        } else {
+          return t;
+        }
+      });
+    }
+    case 'deleted': {
+      return tasks.filter(t => t.id !== action.id);
+    }
+    default: {
+      throw Error('Unknown action: ' + action.type);
+    }
+  }
+}
+
+const initialTasks = [
+  { id: 0, text: 'Philosopher’s Path', done: true },
+  { id: 1, text: 'Visit the temple', done: false },
+  { id: 2, text: 'Drink matcha', done: false }
+];
+```
+
+```js tab="Tab 3"
+//AddTask.js
+import { useState, useContext } from 'react';
+import { useTasksDispatch } from './TasksContext.js';
+
+export default function AddTask() {
+  const [text, setText] = useState('');
+  const dispatch = useTasksDispatch();
+  return (
+    <>
+      <input
+        placeholder="Add task"
+        value={text}
+        onChange={e => setText(e.target.value)}
+      />
+      <button onClick={() => {
+        setText('');
+        dispatch({
+          type: 'added',
+          id: nextId++,
+          text: text,
+        });
+      }}>Add</button>
+    </>
+  );
+}
+
+let nextId = 3;
+```
+
+```js tab="Tab 4"
+//TaskList.js
+import { useState, useContext } from 'react';
+import { useTasks, useTasksDispatch } from './TasksContext.js';
+
+export default function TaskList() {
+  const tasks = useTasks();
+  return (
+    <ul>
+      {tasks.map(task => (
+        <li key={task.id}>
+          <Task task={task} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Task({ task }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const dispatch = useTasksDispatch();
+  let taskContent;
+  if (isEditing) {
+    taskContent = (
+      <>
+        <input
+          value={task.text}
+          onChange={e => {
+            dispatch({
+              type: 'changed',
+              task: {
+                ...task,
+                text: e.target.value
+              }
+            });
+          }} />
+        <button onClick={() => setIsEditing(false)}>
+          Save
+        </button>
+      </>
+    );
+  } else {
+    taskContent = (
+      <>
+        {task.text}
+        <button onClick={() => setIsEditing(true)}>
+          Edit
+        </button>
+      </>
+    );
+  }
+  return (
+    <label>
+      <input
+        type="checkbox"
+        checked={task.done}
+        onChange={e => {
+          dispatch({
+            type: 'changed',
+            task: {
+              ...task,
+              done: e.target.checked
+            }
+          });
+        }}
+      />
+      {taskContent}
+      <button onClick={() => {
+        dispatch({
+          type: 'deleted',
+          id: task.id
+        });
+      }}>
+        Delete
+      </button>
+    </label>
+  );
+}
+```
+
+```js tab="Tab 5"
+//css
+button { margin: 5px; }
+li { list-style-type: none; }
+ul, li { margin: 0; padding: 0; }
+```
+
+---
+
+### Указание резервного значения по умолчанию {/*specifying-a-fallback-default-value*/}
+
+Если React не находит ни одного provider этого конкретного context в родительском дереве, значение context, возвращаемое `useContext()`, будет равно значению по умолчанию, которое вы указали при [создании этого context](/reference/react/createContext):
+
+```js 
+const ThemeContext = createContext(null);
+```
+
+Значение по умолчанию **никогда не меняется**. Если вы хотите обновлять context, используйте его вместе со state, как [описано выше.](#updating-data-passed-via-context)
+
+Часто вместо `null` имеет смысл использовать какое-то более содержательное значение по умолчанию, например:
+
+```js 
+const ThemeContext = createContext('light');
+```
+
+Таким образом, если вы случайно отрендерите какой-то компонент без соответствующего provider, ничего не сломается. Это также помогает компонентам нормально работать в тестовой среде, не требуя настройки большого количества providers в тестах.
+
+В примере ниже кнопка "Toggle theme" всегда светлая, потому что она **находится вне любого provider theme context**, а значение темы context по умолчанию — `'light'`. Попробуйте изменить тему по умолчанию на `'dark'`.
+
+```js tab="Tab 1"
+
+import { createContext, useContext, useState } from 'react';
+
+const ThemeContext = createContext('light');
+
+export default function MyApp() {
+  const [theme, setTheme] = useState('light');
+  return (
+    <>
+      <ThemeContext value={theme}>
+        <Form />
+      </ThemeContext>
+      <Button onClick={() => {
+        setTheme(theme === 'dark' ? 'light' : 'dark');
+      }}>
+        Toggle theme
+      </Button>
+    </>
+  )
+}
+
+function Form({ children }) {
+  return (
+    <Panel title="Welcome">
+      <Button>Sign up</Button>
+      <Button>Log in</Button>
+    </Panel>
+  );
+}
+
+function Panel({ title, children }) {
+  const theme = useContext(ThemeContext);
+  const className = 'panel-' + theme;
+  return (
+    <section className={className}>
+      <h1>{title}</h1>
+      {children}
+    </section>
+  )
+}
+
+function Button({ children, onClick }) {
+  const theme = useContext(ThemeContext);
+  const className = 'button-' + theme;
+  return (
+    <button className={className} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+```
+```js tab="Tab 2"
+//css
+.panel-light,
+.panel-dark {
+  border: 1px solid black;
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 10px;
+}
+.panel-light {
+  color: #222;
+  background: #fff;
+}
+
+.panel-dark {
+  color: #fff;
+  background: rgb(23, 32, 42);
+}
+
+.button-light,
+.button-dark {
+  border: 1px solid #777;
+  padding: 5px;
+  margin-right: 10px;
+  margin-top: 10px;
+}
+
+.button-dark {
+  background: #222;
+  color: #fff;
+}
+
+.button-light {
+  background: #fff;
+  color: #222;
+}
+```
+
+---
+
+### Переопределение context для части дерева {/*overriding-context-for-a-part-of-the-tree*/}
+
+Вы можете переопределить context для части дерева, обернув эту часть в provider с другим значением.
+
+```js
+<ThemeContext value="dark">
+  ...
+  <ThemeContext value="light">
+    <Footer />
+  </ThemeContext>
+  ...
+</ThemeContext>
+```
+
+Вы можете вкладывать providers и переопределять их сколько угодно раз.
+
+#### Переопределение темы {/*overriding-a-theme*/}
+
+Здесь кнопка *внутри* `Footer` получает другое значение context (`"light"`), чем кнопки снаружи (`"dark"`).
+
+```js tab="Tab 1"
+import { createContext, useContext } from 'react';
+
+const ThemeContext = createContext(null);
+
+export default function MyApp() {
+  return (
+    <ThemeContext value="dark">
+      <Form />
+    </ThemeContext>
+  )
+}
+
+function Form() {
+  return (
+    <Panel title="Welcome">
+      <Button>Sign up</Button>
+      <Button>Log in</Button>
+      <ThemeContext value="light">
+        <Footer />
+      </ThemeContext>
+    </Panel>
+  );
+}
+
+function Footer() {
+  return (
+    <footer>
+      <Button>Settings</Button>
+    </footer>
+  );
+}
+
+function Panel({ title, children }) {
+  const theme = useContext(ThemeContext);
+  const className = 'panel-' + theme;
+  return (
+    <section className={className}>
+      {title && <h1>{title}</h1>}
+      {children}
+    </section>
+  )
+}
+
+function Button({ children }) {
+  const theme = useContext(ThemeContext);
+  const className = 'button-' + theme;
+  return (
+    <button className={className}>
+      {children}
+    </button>
+  );
+}
+```
+```js tab="Tab 2"
+//css
+footer {
+  margin-top: 20px;
+  border-top: 1px solid #aaa;
+}
+
+.panel-light,
+.panel-dark {
+  border: 1px solid black;
+  border-radius: 4px;
+  padding: 20px;
+}
+.panel-light {
+  color: #222;
+  background: #fff;
+}
+
+.panel-dark {
+  color: #fff;
+  background: rgb(23, 32, 42);
+}
+
+.button-light,
+.button-dark {
+  border: 1px solid #777;
+  padding: 5px;
+  margin-right: 10px;
+  margin-top: 10px;
+}
+
+.button-dark {
+  background: #222;
+  color: #fff;
+}
+
+.button-light {
+  background: #fff;
+  color: #222;
+}
+```
+
+#### Автоматически вложенные заголовки {/*automatically-nested-headings*/}
+
+Можно "накапливать" информацию при вложении providers context. В этом примере компонент `Section` отслеживает `LevelContext`, который определяет глубину вложенности section. Он читает `LevelContext` от родительского section и передаёт детям значение `LevelContext`, увеличенное на единицу. В результате компонент `Heading` может автоматически решать, какой тег из `<h1>`, `<h2>`, `<h3>`, ... использовать, исходя из того, сколько компонентов `Section` находится выше него во вложенности.
+
+Прочитайте [подробный разбор](/learn/passing-data-deeply-with-context) этого примера.
+
+```js tab="Tab 1"
+import Heading from './Heading.js';
+import Section from './Section.js';
+
+export default function Page() {
+  return (
+    <Section>
+      <Heading>Title</Heading>
+      <Section>
+        <Heading>Heading</Heading>
+        <Heading>Heading</Heading>
+        <Heading>Heading</Heading>
+        <Section>
+          <Heading>Sub-heading</Heading>
+          <Heading>Sub-heading</Heading>
+          <Heading>Sub-heading</Heading>
+          <Section>
+            <Heading>Sub-sub-heading</Heading>
+            <Heading>Sub-sub-heading</Heading>
+            <Heading>Sub-sub-heading</Heading>
+          </Section>
+        </Section>
+      </Section>
+    </Section>
+  );
+}
+```
+```js tab="Tab 2"
+//Section.js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Section({ children }) {
+  const level = useContext(LevelContext);
+  return (
+    <section className="section">
+      <LevelContext value={level + 1}>
+        {children}
+      </LevelContext>
+    </section>
+  );
+}
+```
+```js tab="Tab 3"
+//Heading.js
+import { useContext } from 'react';
+import { LevelContext } from './LevelContext.js';
+
+export default function Heading({ children }) {
+  const level = useContext(LevelContext);
+  switch (level) {
+    case 0:
+      throw Error('Heading must be inside a Section!');
+    case 1:
+      return <h1>{children}</h1>;
+    case 2:
+      return <h2>{children}</h2>;
+    case 3:
+      return <h3>{children}</h3>;
+    case 4:
+      return <h4>{children}</h4>;
+    case 5:
+      return <h5>{children}</h5>;
+    case 6:
+      return <h6>{children}</h6>;
+    default:
+      throw Error('Unknown level: ' + level);
+  }
+}
+```
+```js tab="Tab 4"
+//LevelContext.js
+import { createContext } from 'react';
+
+export const LevelContext = createContext(0);
+```
+```js tab="Tab 5"
+//css
+.section {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+}
+```
+---
+
+### Оптимизация повторных рендеров при передаче объектов и функций {/*optimizing-re-renders-when-passing-objects-and-functions*/}
+
+Через context можно передавать любые значения, включая объекты и функции.
+
+```js 
+function MyApp() {
+  const [currentUser, setCurrentUser] = useState(null);
+
+  function login(response) {
+    storeCredentials(response.credentials);
+    setCurrentUser(response.user);
+  }
+
+  return (
+    <AuthContext value={{ currentUser, login }}>
+      <Page />
+    </AuthContext>
+  );
+}
+```
+
+Здесь значение context — это JavaScript-объект с двумя свойствами, одно из которых является функцией. Каждый раз, когда `MyApp` повторно рендерится (например, при обновлении route), это будет *другой* объект, указывающий на *другую* функцию, поэтому React придётся также повторно рендерить все компоненты глубоко в дереве, которые вызывают `useContext(AuthContext)`.
+
+В небольших приложениях это не проблема. Однако нет нужды повторно рендерить их, если базовые данные, например `currentUser`, не изменились. Чтобы помочь React воспользоваться этим, вы можете обернуть функцию `login` в [`useCallback`](/reference/react/useCallback), а создание объекта — в [`useMemo`](/reference/react/useMemo). Это оптимизация производительности:
+
+```js 
+import { useCallback, useMemo } from 'react';
+
+function MyApp() {
+  const [currentUser, setCurrentUser] = useState(null);
+
+  const login = useCallback((response) => {
+    storeCredentials(response.credentials);
+    setCurrentUser(response.user);
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    currentUser,
+    login
+  }), [currentUser, login]);
+
+  return (
+    <AuthContext value={contextValue}>
+      <Page />
+    </AuthContext>
+  );
+}
+```
+
+В результате этого изменения, даже если `MyApp` нужно повторно рендерить, компоненты, вызывающие `useContext(AuthContext)`, не будут нуждаться в повторном рендере, пока не изменится `currentUser`.
+
+Подробнее о [`useMemo`](/reference/react/useMemo#skipping-re-rendering-of-components) и [`useCallback`.](/reference/react/useCallback#skipping-re-rendering-of-components)
+
+---
+
+## Поиск и устранение проблем {/*troubleshooting*/}
+
+### Мой компонент не видит значение из provider {/*my-component-doesnt-see-the-value-from-my-provider*/}
+
+Такое обычно происходит по нескольким причинам:
+
+1. Вы рендерите `<SomeContext>` в том же компоненте (или ниже), где вызываете `useContext()`. Переместите `<SomeContext>` *выше и вне* компонента, который вызывает `useContext()`.
+2. Вы могли забыть обернуть компонент в `<SomeContext>`, либо поместили его не в ту часть дерева, как вам казалось. Проверьте иерархию с помощью [React DevTools.](/learn/react-developer-tools)
+3. Возможно, вы столкнулись с проблемой сборки в вашем tooling, из-за которой `SomeContext`, как его видит компонент-поставщик, и `SomeContext`, как его видит компонент-читатель, оказываются двумя разными объектами. Такое может произойти, например, при использовании symlinks. Проверить это можно, присвоив их глобальным переменным вроде `window.SomeContext1` и `window.SomeContext2`, а затем сравнив `window.SomeContext1 === window.SomeContext2` в консоли. Если они разные, нужно исправить это на уровне build tool.
+
+### Из моего context всегда приходит `undefined`, хотя значение по умолчанию другое {/*i-am-always-getting-undefined-from-my-context-although-the-default-value-is-different*/}
+
+В дереве может быть provider без `value`:
+
+```js {1,2}
+// 🚩 Doesn't work: no value prop
+<ThemeContext>
+   <Button />
+</ThemeContext>
+```
+
+Если вы забудете указать `value`, это то же самое, что передать `value={undefined}`.
+
+Также вы могли по ошибке использовать другое имя prop:
+
+```js {1,2}
+// 🚩 Doesn't work: prop should be called "value"
+<ThemeContext theme={theme}>
+   <Button />
+</ThemeContext>
+```
+
+В обоих случаях в консоли должна появиться warning от React. Чтобы исправить это, укажите prop `value`:
+
+```js {1,2}
+// ✅ Passing the value prop
+<ThemeContext value={theme}>
+   <Button />
+</ThemeContext>
+```
+
+Обратите внимание: [значение по умолчанию из вызова `createContext(defaultValue)`](#specifying-a-fallback-default-value) используется **только если выше вообще нет подходящего provider.** Если где-то в родительском дереве есть компонент `<SomeContext value={undefined}>`, компонент, вызывающий `useContext(SomeContext)`, *получит* `undefined` в качестве значения context.
