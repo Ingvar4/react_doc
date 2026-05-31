@@ -1,0 +1,126 @@
+---
+title: useDebugValue
+description: useDebugValue — это React Hook, который позволяет добавить метку к custom Hook в React DevTools.
+---
+
+```js
+useDebugValue(value, format?)
+```
+
+### `useDebugValue(value, format?)` {/*usedebugvalue*/}
+
+Вызывайте `useDebugValue` на верхнем уровне вашего [custom Hook](/docs/escape-hatches/reusing-logic-with-custom-hooks), чтобы отображать понятное значение для отладки:
+
+```js
+import { useDebugValue } from 'react';
+
+function useOnlineStatus() {
+  // ...
+  useDebugValue(isOnline ? 'Online' : 'Offline');
+  // ...
+}
+```
+
+#### Parameters {/*parameters*/}
+
+* `value`: Значение, которое вы хотите отображать в React DevTools. Оно может быть любого типа.
+* **optional** `format`: Функция форматирования. Когда компонент инспектируется, React DevTools вызовет эту функцию с `value` в качестве аргумента, а затем отобразит возвращённое отформатированное значение (которое тоже может быть любого типа). Если вы не укажете функцию форматирования, будет отображаться само исходное `value`.
+
+#### Returns {/*returns*/}
+
+`useDebugValue` ничего не возвращает.
+
+## Usage {/*usage*/}
+
+### Добавление метки к custom Hook {/*adding-a-label-to-a-custom-hook*/}
+
+Вызывайте `useDebugValue` на верхнем уровне вашего [custom Hook](/docs/escape-hatches/reusing-logic-with-custom-hooks), чтобы отображать понятное значение для отладки в [React DevTools.](/learn/react-developer-tools)
+
+```js
+import { useDebugValue } from 'react';
+
+function useOnlineStatus() {
+  // ...
+  useDebugValue(isOnline ? 'Online' : 'Offline');
+  // ...
+}
+```
+
+Это даёт компонентам, использующим `useOnlineStatus`, метку вроде `OnlineStatus: "Online"` при просмотре в инспекторе:
+
+<img src="/images/react-devtools-usedebugvalue.png" alt="1" style={{  height: 'auto' }} />
+
+Без вызова `useDebugValue` отображались бы только базовые данные (в этом примере, `true`).
+
+import { ReactDevStyleExample } from '../../../../components/react_dev_style_example';
+import { Example118 } from '../../../../examples/example copy 118';
+
+<ReactDevStyleExample
+  title=""
+  previewTitle="Preview"
+  iframeHeight={180}
+  files={[
+
+{
+  tab: 'tsx',
+  label: '',
+  filename: 'App.js',
+  lang: 'tsx',
+  code: String.raw`import { useOnlineStatus } from './useOnlineStatus.js';
+
+  function StatusBar() {
+    const isOnline = useOnlineStatus();
+    return <h1>{isOnline ? '✅ Online' : '❌ Disconnected'}</h1>;
+  }
+
+  export default function App() {
+    return <StatusBar />;
+  }`,
+  },
+  {
+  tab: 'utils',
+  label: '',
+  filename: 'useOnlineStatus.js',
+  lang: 'ts',
+  code: String.raw`import { useSyncExternalStore, useDebugValue } from 'react';
+
+  export function useOnlineStatus() {
+    const isOnline = useSyncExternalStore(subscribe, () => navigator.onLine, () => true);
+    useDebugValue(isOnline ? 'Online' : 'Offline');
+    return isOnline;
+  }
+
+  function subscribe(callback) {
+    window.addEventListener('online', callback);
+    window.addEventListener('offline', callback);
+    return () => {
+      window.removeEventListener('online', callback);
+      window.removeEventListener('offline', callback);
+    };
+  }`,
+  },
+  ]}
+>
+  <Example118 />
+</ReactDevStyleExample>
+
+
+<Callout>
+
+Не добавляйте значения отладки в каждый custom Hook. Это особенно полезно для custom Hooks, которые являются частью общих библиотек и имеют сложную внутреннюю структуру данных, которую трудно просматривать.
+
+</Callout>
+
+---
+
+### Отложенное форматирование значения отладки {/*deferring-formatting-of-a-debug-value*/}
+
+Вы также можете передать функцию форматирования в качестве второго аргумента `useDebugValue`:
+
+```js
+useDebugValue(date, date => date.toDateString());
+```
+
+Ваша функция форматирования получит значение отладки в качестве параметра и должна вернуть отформатированное значение для отображения. Когда ваш компонент будет инспектироваться, React DevTools вызовет эту функцию и покажет её результат.
+
+Это позволяет избежать выполнения потенциально дорогой логики форматирования, если компонент фактически не просматривается. Например, если `date` — это значение Date, это позволяет не вызывать `toDateString()` на каждом рендере.
