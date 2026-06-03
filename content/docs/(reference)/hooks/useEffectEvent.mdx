@@ -1,0 +1,527 @@
+---
+title: useEffectEvent
+description: useEffectEvent — это React Hook, который позволяет отделять события от Effects.
+---
+
+
+```js
+const onEvent = useEffectEvent(callback)
+```
+
+## Reference {/*reference*/}
+
+### `useEffectEvent(callback)` {/*useeffectevent*/}
+
+Вызывайте `useEffectEvent` на верхнем уровне компонента, чтобы создать Effect Event.
+
+```js {4,6}
+import { useEffectEvent, useEffect } from 'react';
+
+function ChatRoom({ roomId, theme }) {
+  const onConnected = useEffectEvent(() => {
+    showNotification('Connected!', theme);
+  });
+}
+```
+
+Effect Events — это часть логики вашего Effect, но ведут они себя больше как обработчик события. Они всегда “видят” самые свежие значения из рендера (например, props и state) без повторной синхронизации Effect, поэтому их исключают из зависимостей Effect. Подробнее см. в разделе [Разделение событий и Effects](/learn/separating-events-from-effects#extracting-non-reactive-logic-out-of-effects).
+
+#### Параметры {/*parameters*/}
+
+* `callback`: Функция с логикой вашего Effect Event. Функция может принимать любое количество аргументов и возвращать любое значение. Когда вы вызываете возвращённую функцию Effect Event, `callback` всегда получает доступ к самым свежим committed значениям из рендера на момент вызова.
+
+#### Возвращаемое значение {/*returns*/}
+
+`useEffectEvent` возвращает функцию Effect Event с той же сигнатурой типов, что и ваш `callback`.
+
+Вы можете вызывать эту функцию внутри `useEffect`, `useLayoutEffect`, `useInsertionEffect` или внутри других Effect Events в том же компоненте.
+
+#### Ограничения {/*caveats*/}
+
+* `useEffectEvent` — это Hook, поэтому вы можете вызывать его только **на верхнем уровне компонента** или своих Hook. Нельзя вызывать его внутри циклов или условий. Если вам это нужно, вынесите новый компонент и переместите Effect Event в него.
+* Effect Events можно вызывать только изнутри Effects или других Effect Events. Не вызывайте их во время рендера и не передавайте в другие компоненты или Hook. Это ограничение проверяет линтер [`eslint-plugin-react-hooks`](/reference/eslint-plugin-react-hooks).
+* Не используйте `useEffectEvent`, чтобы избежать указания зависимостей в dependency array вашего Effect. Это скрывает баги и делает код труднее для понимания. Используйте его только для логики, которая действительно является событием, запускаемым из Effect.
+* Функции Effect Event не имеют стабильной идентичности. Их идентичность намеренно меняется на каждом рендере.
+
+<Callout type='idea'>
+
+#### Почему Effect Events не являются стабильными? {/*why-are-effect-events-not-stable*/}
+
+В отличие от `set`-функций из `useState` или refs, функции Effect Event не имеют стабильной идентичности. Их идентичность намеренно меняется на каждом рендере:
+
+```js
+// 🔴 Неверно: включать Effect Event в зависимости
+useEffect(() => {
+  onSomething();
+}, [onSomething]); // ESLint предупредит об этом
+```
+
+Это осознанное проектное решение. Effect Events предназначены только для вызова внутри Effects в том же компоненте. Поскольку вы можете вызывать их только локально и не можете передавать их в другие компоненты или включать в dependency array, стабильная идентичность не приносила бы пользы и лишь маскировала бы баги.
+
+Нестабильная идентичность работает как runtime-проверка: если ваш код ошибочно зависит от идентичности функции, вы увидите, что Effect перезапускается на каждом рендере, и баг станет заметен.
+
+Это проектное решение подчёркивает, что Effect Events концептуально принадлежат конкретному Effect и не являются универсальным API для отключения реактивности.
+
+</Callout>
+
+---
+
+## Usage {/*usage*/}
+
+### Использование event внутри Effect {/*using-an-event-in-an-effect*/}
+
+Вызывайте `useEffectEvent` на верхнем уровне компонента, чтобы создать *Effect Event*:
+
+```js
+const onConnected = useEffectEvent(() => {
+  if (!muted) {
+    showNotification('Connected!');
+  }
+});
+```
+
+`useEffectEvent` принимает `event callback` и возвращает Effect Event. Effect Event — это функция, которую можно вызывать внутри Effects без повторного подключения Effect:
+
+```js
+useEffect(() => {
+  const connection = createConnection(roomId);
+  connection.on('connected', onConnected);
+  connection.connect();
+  return () => {
+    connection.disconnect();
+  }
+}, [roomId]);
+```
+
+Поскольку `onConnected` — это Effect Event, `muted` и `onConnect` не входят в зависимости Effect.
+
+<Callout>
+
+##### Не используйте Effect Events, чтобы «спрятать» зависимости {/*pitfall-skip-dependencies*/}
+
+Может возникнуть соблазн использовать `useEffectEvent`, чтобы не перечислять зависимости, которые кажутся вам «лишними». Однако это скрывает баги и делает код труднее для понимания:
+
+```js
+// 🔴 Неверно: использование Effect Events, чтобы скрыть зависимости
+const logVisit = useEffectEvent(() => {
+  log(pageUrl);
+});
+
+useEffect(() => {
+  logVisit()
+}, []); // Отсутствие pageUrl означает, что вы теряете логи
+```
+
+Если значение должно заставлять ваш Effect перезапускаться, оставляйте его в зависимостях. Используйте Effect Events только для логики, которая действительно не должна заново запускать ваш Effect.
+
+Подробнее см. в разделе [Разделение событий и Effects](/learn/separating-events-from-effects).
+
+</Callout>
+
+---
+
+### Использование таймера с самыми свежими значениями {/*using-a-timer-with-latest-values*/}
+
+Когда вы используете `setInterval` или `setTimeout` внутри Effect, часто нужно читать самые свежие значения из рендера, не перезапуская таймер при каждом их изменении.
+
+Этот счётчик увеличивает `count` на текущее значение `increment` каждую секунду. Effect Event `onTick` читает самые свежие `count` и `increment`, не вызывая перезапуск интервала:
+
+```js tab="Tab 1"
+import { useState, useEffect, useEffectEvent } from 'react';
+
+export default function Timer() {
+  const [count, setCount] = useState(0);
+  const [increment, setIncrement] = useState(1);
+
+  const onTick = useEffectEvent(() => {
+    setCount(count + increment);
+  });
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      onTick();
+    }, 1000);
+    return () => {
+      clearInterval(id);
+    };
+  }, []);
+
+  return (
+    <>
+      <h1>
+        Counter: {count}
+        <button onClick={() => setCount(0)}>Reset</button>
+      </h1>
+      <hr />
+      <p>
+        Every second, increment by:
+        <button disabled={increment === 0} onClick={() => {
+          setIncrement(i => i - 1);
+        }}>–</button>
+        <b>{increment}</b>
+        <button onClick={() => {
+          setIncrement(i => i + 1);
+        }}>+</button>
+      </p>
+    </>
+  );
+}
+```
+```js tab="Tab 2"
+//css
+button { margin: 10px; }
+```
+
+Попробуйте менять значение increment, пока таймер работает. Счётчик сразу использует новое значение increment, но таймер продолжает тикать плавно без перезапуска.
+
+---
+
+### Использование listener с самыми свежими значениями {/*using-an-event-listener-with-latest-values*/}
+
+Когда вы настраиваете listener события внутри Effect, часто нужно читать самые свежие значения из рендера в callback. Без `useEffectEvent` вам пришлось бы добавлять эти значения в зависимости, из-за чего listener пришлось бы удалять и снова добавлять при каждом изменении.
+
+Этот пример показывает точку, которая следует за курсором, но только когда включён флаг "Can move". Effect Event `onMove` всегда читает самое свежее значение `canMove`, не вызывая повторный запуск Effect:
+
+```js tab="Tab 1"
+import { useState, useEffect, useEffectEvent } from 'react';
+
+export default function App() {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [canMove, setCanMove] = useState(true);
+
+  const onMove = useEffectEvent(e => {
+    if (canMove) {
+      setPosition({ x: e.clientX, y: e.clientY });
+    }
+  });
+
+  useEffect(() => {
+    window.addEventListener('pointermove', onMove);
+    return () => window.removeEventListener('pointermove', onMove);
+  }, []);
+
+  return (
+    <>
+      <label>
+        <input
+          type="checkbox"
+          checked={canMove}
+          onChange={e => setCanMove(e.target.checked)}
+        />
+        The dot is allowed to move
+      </label>
+      <hr />
+      <div style={{
+        position: 'absolute',
+        backgroundColor: 'pink',
+        borderRadius: '50%',
+        opacity: 0.6,
+        transform: `translate(${position.x}px, ${position.y}px)`,
+        pointerEvents: 'none',
+        left: -20,
+        top: -20,
+        width: 40,
+        height: 40,
+      }} />
+    </>
+  );
+}
+```
+```js tab="Tab 2"
+//css
+body {
+  height: 200px;
+}
+```
+
+Переключайте checkbox и двигайте курсор. Точка сразу реагирует на состояние checkbox, но listener события настраивается только один раз, когда компонент монтируется.
+
+---
+
+### Избежание повторного подключения к внешним системам {/*showing-a-notification-without-reconnecting*/}
+
+Один из частых сценариев для `useEffectEvent` — когда вы хотите сделать что-то в ответ на Effect, но это «что-то» зависит от значения, на которое вы не хотите реагировать.
+
+В этом примере чат-компонент подключается к комнате и показывает уведомление при подключении. Пользователь может отключать уведомления с помощью checkbox. Однако вы не хотите переподключаться к комнате при каждом изменении настроек:
+
+```js tab="Tab 1"
+//json package.json hidden
+{
+  "dependencies": {
+    "react": "latest",
+    "react-dom": "latest",
+    "react-scripts": "latest",
+    "toastify-js": "1.12.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  }
+}
+```
+```js tab="Tab 2"
+
+import { useState, useEffect, useEffectEvent } from 'react';
+import { createConnection } from './chat.js';
+import { showNotification } from './notifications.js';
+
+function ChatRoom({ roomId, muted }) {
+  const onConnected = useEffectEvent((roomId) => {
+    console.log('✅ Connected to ' + roomId + ' (muted: ' + muted + ')');
+    if (!muted) {
+      showNotification('Connected to ' + roomId);
+    }
+  });
+
+  useEffect(() => {
+    const connection = createConnection(roomId);
+    console.log('⏳ Connecting to ' + roomId + '...');
+    connection.on('connected', () => {
+      onConnected(roomId);
+    });
+    connection.connect();
+    return () => {
+      console.log('❌ Disconnected from ' + roomId);
+      connection.disconnect();
+    }
+  }, [roomId]);
+
+  return <h1>Welcome to the {roomId} room!</h1>;
+}
+
+export default function App() {
+  const [roomId, setRoomId] = useState('general');
+  const [muted, setMuted] = useState(false);
+  return (
+    <>
+      <label>
+        Choose the chat room:{' '}
+        <select
+          value={roomId}
+          onChange={e => setRoomId(e.target.value)}
+        >
+          <option value="general">general</option>
+          <option value="travel">travel</option>
+          <option value="music">music</option>
+        </select>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={muted}
+          onChange={e => setMuted(e.target.checked)}
+        />
+        Mute notifications
+      </label>
+      <hr />
+      <ChatRoom
+        roomId={roomId}
+        muted={muted}
+      />
+    </>
+  );
+}
+```
+```js tab="Tab 3"
+///chat.js
+const serverUrl = 'https://localhost:1234';
+
+export function createConnection(roomId) {
+  // A real implementation would actually connect to the server
+  let connectedCallback;
+  let timeout;
+  return {
+    connect() {
+      timeout = setTimeout(() => {
+        if (connectedCallback) {
+          connectedCallback();
+        }
+      }, 100);
+    },
+    on(event, callback) {
+      if (connectedCallback) {
+        throw Error('Cannot add the handler twice.');
+      }
+      if (event !== 'connected') {
+        throw Error('Only "connected" event is supported.');
+      }
+      connectedCallback = callback;
+    },
+    disconnect() {
+      clearTimeout(timeout);
+    }
+  };
+}
+```
+```js tab="Tab 4"
+//notifications.js
+import Toastify from 'toastify-js';
+import 'toastify-js/src/toastify.css';
+
+export function showNotification(message, theme) {
+  Toastify({
+    text: message,
+    duration: 2000,
+    gravity: 'top',
+    position: 'right',
+    style: {
+      background: theme === 'dark' ? 'black' : 'white',
+      color: theme === 'dark' ? 'white' : 'black',
+    },
+  }).showToast();
+}
+```
+```js tab="Tab 5"
+//css
+label { display: block; margin-top: 10px; }
+```
+
+Попробуйте переключать комнаты. Чат переподключается и показывает уведомление. Теперь отключите уведомления. Поскольку `muted` читается внутри Effect Event, а не внутри Effect, чат остаётся подключённым.
+
+---
+
+### Использование Effect Events в custom Hooks {/*using-effect-events-in-custom-hooks*/}
+
+Вы можете использовать `useEffectEvent` внутри своих custom Hooks. Это позволяет создавать переиспользуемые Hooks, которые инкапсулируют Effects, при этом сохраняя некоторые значения не реактивными:
+
+```js tab="Tab 1"
+import { useState, useEffect, useEffectEvent } from 'react';
+
+function useInterval(callback, delay) {
+  const onTick = useEffectEvent(callback);
+
+  useEffect(() => {
+    if (delay === null) {
+      return;
+    }
+    const id = setInterval(() => {
+      onTick();
+    }, delay);
+    return () => clearInterval(id);
+  }, [delay]);
+}
+
+function Counter({ incrementBy }) {
+  const [count, setCount] = useState(0);
+
+  useInterval(() => {
+    setCount(c => c + incrementBy);
+  }, 1000);
+
+  return (
+    <div>
+      <h2>Count: {count}</h2>
+      <p>Incrementing by {incrementBy} every second</p>
+    </div>
+  );
+}
+
+export default function App() {
+  const [incrementBy, setIncrementBy] = useState(1);
+
+  return (
+    <>
+      <label>
+        Increment by:{' '}
+        <select
+          value={incrementBy}
+          onChange={(e) => setIncrementBy(Number(e.target.value))}
+        >
+          <option value={1}>1</option>
+          <option value={5}>5</option>
+          <option value={10}>10</option>
+        </select>
+      </label>
+      <hr />
+      <Counter incrementBy={incrementBy} />
+    </>
+  );
+}
+```
+```js tab="Tab 2"
+//css
+label { display: block; margin-bottom: 8px; }
+```
+
+В этом примере `useInterval` — это custom Hook, который настраивает интервал. `callback`, который в него передаётся, обёрнут в Effect Event, поэтому интервал не сбрасывается, даже если на каждом рендере передаётся новый `callback`.
+
+---
+
+## Troubleshooting {/*troubleshooting*/}
+
+### Получаю ошибку: "A function wrapped in useEffectEvent can't be called during rendering" {/*cant-call-during-rendering*/}
+
+Эта ошибка означает, что вы вызываете Effect Event во время фазы рендера компонента. Effect Events можно вызывать только изнутри Effects или других Effect Events.
+
+```js
+function MyComponent({ data }) {
+  const onLog = useEffectEvent(() => {
+    console.log(data);
+  });
+
+  // 🔴 Неверно: вызов во время рендера
+  onLog();
+
+  // ✅ Верно: вызывать из Effect
+  useEffect(() => {
+    onLog();
+  }, []);
+
+  return <div>{data}</div>;
+}
+```
+
+Если вам нужно выполнить логику во время рендера, не оборачивайте её в `useEffectEvent`. Вызывайте логику напрямую или переместите её в Effect.
+
+---
+
+### Получаю ошибку линтера: "Functions returned from useEffectEvent must not be included in the dependency array" {/*effect-event-in-deps*/}
+
+Если вы видите предупреждение вроде "Functions returned from `useEffectEvent` must not be included in the dependency array", уберите Effect Event из зависимостей:
+
+```js
+const onSomething = useEffectEvent(() => {
+  // ...
+});
+
+// 🔴 Неверно: Effect Event в dependencies
+useEffect(() => {
+  onSomething();
+}, [onSomething]);
+
+// ✅ Верно: Effect Event не входит в dependencies
+useEffect(() => {
+  onSomething();
+}, []);
+```
+
+Effect Events предназначены для вызова из Effects без перечисления в зависимостях. Линтер требует этого, потому что идентичность функции [намеренно нестабильна](#why-are-effect-events-not-stable). Если включить её в dependencies, Effect будет перезапускаться на каждом рендере.
+
+---
+
+### Получаю ошибку линтера: "... is a function created with useEffectEvent, and can only be called from Effects" {/*effect-event-called-outside-effect*/}
+
+Если вы видите предупреждение вроде "... is a function created with React Hook `useEffectEvent`, and can only be called from Effects and Effect Events", значит вы вызываете функцию не из того места:
+
+```js
+const onSomething = useEffectEvent(() => {
+  console.log(value);
+});
+
+// 🔴 Неверно: вызов из обработчика события
+function handleClick() {
+  onSomething();
+}
+
+// 🔴 Неверно: передача в дочерний компонент
+return <Child onSomething={onSomething} />;
+
+// ✅ Верно: вызов из Effect
+useEffect(() => {
+  onSomething();
+}, []);
+```
+
+Effect Events специально созданы для использования в Effects, локальных для компонента, в котором они определены. Если вам нужен callback для обработчиков событий или для передачи дочерним компонентам, используйте обычную функцию или `useCallback` вместо этого.
