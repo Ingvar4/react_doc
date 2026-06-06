@@ -1,0 +1,18 @@
+---
+title: useImperativeHandle
+description: useImperativeHandle — это React-хук, позволяющий настраивать обработчик, отображаемый в виде ссылки.
+---
+
+Вызовите метод `useImperativeHandle` на верхнем уровне вашего компонента, чтобы настроить предоставляемый им дескриптор ссылки:
+
+```js
+import { useImperativeHandle } from 'react';
+
+function MyInput({ ref }) {
+  useImperativeHandle(ref, () => {
+    return {
+      // ... your methods ...
+    };
+  }, []);
+  // ...
+```
