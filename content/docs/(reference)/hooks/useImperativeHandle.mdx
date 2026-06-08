@@ -3,7 +3,11 @@ title: useImperativeHandle
 description: useImperativeHandle — это React-хук, позволяющий настраивать обработчик, отображаемый в виде ссылки.
 ---
 
-Вызовите метод `useImperativeHandle` на верхнем уровне вашего компонента, чтобы настроить предоставляемый им дескриптор ссылки:
+## Reference {/*reference*/}
+
+### `useImperativeHandle(ref, createHandle, dependencies?)` {/*useimperativehandle*/}
+
+Вызывайте `useImperativeHandle` на верхнем уровне вашего компонента, чтобы настроить handle ref, который он экспортирует:
 
 ```js
 import { useImperativeHandle } from 'react';
@@ -17,8 +21,249 @@ function MyInput({ ref }) {
   // ...
 ```
 
-## Параметры
+#### Parameters {/*parameters*/}
 
-- ref: Ссылка, полученная вами в качестве свойства компонентом MyInput.
-- createHandle: Функция, которая не принимает аргументов и возвращает дескриптор ссылки, который вы хотите сделать доступным. Этот дескриптор ссылки может иметь любой тип. Обычно вы возвращаете объект с методами, которые хотите сделать доступными.
-- Необязательные зависимости: Список всех реактивных значений, на которые ссылается код функции createHandle. Реактивные значения включают props, state, а также все переменные и функции, объявленные непосредственно в теле компонента. Если ваш линтер настроен для React, он проверит, правильно ли указано каждое реактивное значение в качестве зависимости. Список зависимостей должен содержать постоянное количество элементов и быть записан непосредственно в коде, например, [dep1, dep2, dep3]. React сравнит каждую зависимость с ее предыдущим значением, используя сравнение Object.is. Если перерисовка привела к изменению какой-либо зависимости или если вы опустили этот аргумент, ваша функция createHandle будет выполнена повторно, и вновь созданный дескриптор будет присвоен ссылке.
+* `ref`: `ref`, который вы получили как prop компонента `MyInput`.
+
+* `createHandle`: Функция, которая не принимает аргументов и возвращает handle ref, который вы хотите экспортировать. Этот handle может иметь любой тип. Обычно вы возвращаете объект с методами, которые хотите предоставить наружу.
+
+* **optional** `dependencies`: Список всех реактивных значений, на которые ссылается код внутри `createHandle`. Реактивные значения включают props, state, а также все переменные и функции, объявленные непосредственно внутри тела компонента. Если ваш linter [настроен для React](/learn/editor-setup#linting), он проверит, что каждое реактивное значение корректно указано как dependency. Список dependencies должен содержать постоянное количество элементов и быть записан inline, как `[dep1, dep2, dep3]`. React сравнит каждую dependency с её предыдущим значением, используя сравнение [`Object.is`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is). Если повторный рендер привёл к изменению одной из dependencies, или если вы опустили этот аргумент, функция `createHandle` выполнится заново, а newly created handle будет назначен в ref.
+
+<Callout>
+Начиная с React 19, [`ref` доступен как prop.](/blog/2024/12/05/react-19#ref-as-a-prop) В React 18 и более ранних версиях `ref` нужно было получать из [`forwardRef`.](/reference/react/forwardRef)
+
+</Callout>
+
+#### Returns {/*returns*/}
+
+`useImperativeHandle` возвращает `undefined`.
+
+---
+
+## Usage {/*usage*/}
+
+### Экспонирование custom ref handle для родительского компонента {/*exposing-a-custom-ref-handle-to-the-parent-component*/}
+
+Чтобы передать DOM node родительскому элементу, передайте prop `ref` в этот node.
+
+```js {2}
+function MyInput({ ref }) {
+  return <input ref={ref} />;
+};
+```
+
+В коде выше [ref для `MyInput` получит DOM node `<input>`.](/learn/manipulating-the-dom-with-refs) Однако вы можете вместо этого экспортировать custom value. Чтобы настроить экспортируемый handle, вызовите `useImperativeHandle` на верхнем уровне вашего компонента:
+
+```js {4-8}
+import { useImperativeHandle } from 'react';
+
+function MyInput({ ref }) {
+  useImperativeHandle(ref, () => {
+    return {
+      // ... your methods ...
+    };
+  }, []);
+
+  return <input />;
+};
+```
+
+Обратите внимание, что в коде выше `ref` больше не передаётся в `<input>`.
+
+Например, допустим, вы не хотите экспортировать весь DOM node `<input>`, но хотите предоставить две его методы: `focus` и `scrollIntoView`. Для этого храните настоящий browser DOM в отдельном ref. Затем используйте `useImperativeHandle`, чтобы экспортировать handle только с теми методами, которые родительский компонент должен вызывать:
+
+```js {7-14}
+import { useRef, useImperativeHandle } from 'react';
+
+function MyInput({ ref }) {
+  const inputRef = useRef(null);
+
+  useImperativeHandle(ref, () => {
+    return {
+      focus() {
+        inputRef.current.focus();
+      },
+      scrollIntoView() {
+        inputRef.current.scrollIntoView();
+      },
+    };
+  }, []);
+
+  return <input ref={inputRef} />;
+};
+```
+
+Теперь, если родительский компонент получит ref на `MyInput`, он сможет вызывать у него методы `focus` и `scrollIntoView`. Однако у него не будет полного доступа к базовому DOM node `<input>`.
+
+```js tab="Tab 1"
+
+import { useRef } from 'react';
+import MyInput from './MyInput.js';
+
+export default function Form() {
+  const ref = useRef(null);
+
+  function handleClick() {
+    ref.current.focus();
+    // This won't work because the DOM node isn't exposed:
+    // ref.current.style.opacity = 0.5;
+  }
+
+  return (
+    <form>
+      <MyInput placeholder="Enter your name" ref={ref} />
+      <button type="button" onClick={handleClick}>
+        Edit
+      </button>
+    </form>
+  );
+}
+```
+```js tab="Tab 2"
+//MyInput.js
+import { useRef, useImperativeHandle } from 'react';
+
+function MyInput({ ref, ...props }) {
+  const inputRef = useRef(null);
+
+  useImperativeHandle(ref, () => {
+    return {
+      focus() {
+        inputRef.current.focus();
+      },
+      scrollIntoView() {
+        inputRef.current.scrollIntoView();
+      },
+    };
+  }, []);
+
+  return <input {...props} ref={inputRef} />;
+};
+
+export default MyInput;
+```
+```js tab="Tab 3"
+//css
+input {
+  margin: 5px;
+}
+```
+
+---
+
+### Экспонирование собственных imperative-методов {/*exposing-your-own-imperative-methods*/}
+
+Методы, которые вы экспортируете через imperative handle, не обязаны точно совпадать с DOM-методами. Например, этот компонент `Post` экспортирует метод `scrollAndFocusAddComment` через imperative handle. Это позволяет родительскому `Page` прокрутить список комментариев *и* сфокусировать поле ввода при нажатии кнопки:
+
+```js tab="Tab 1"
+import { useRef } from 'react';
+import Post from './Post.js';
+
+export default function Page() {
+  const postRef = useRef(null);
+
+  function handleClick() {
+    postRef.current.scrollAndFocusAddComment();
+  }
+
+  return (
+    <>
+      <button onClick={handleClick}>
+        Write a comment
+      </button>
+      <Post ref={postRef} />
+    </>
+  );
+}
+```
+```js tab="Tab 2"
+//Post.js
+import { useRef, useImperativeHandle } from 'react';
+import CommentList from './CommentList.js';
+import AddComment from './AddComment.js';
+
+function Post({ ref }) {
+  const commentsRef = useRef(null);
+  const addCommentRef = useRef(null);
+
+  useImperativeHandle(ref, () => {
+    return {
+      scrollAndFocusAddComment() {
+        commentsRef.current.scrollToBottom();
+        addCommentRef.current.focus();
+      }
+    };
+  }, []);
+
+  return (
+    <>
+      <article>
+        <p>Welcome to my blog!</p>
+      </article>
+      <CommentList ref={commentsRef} />
+      <AddComment ref={addCommentRef} />
+    </>
+  );
+};
+
+export default Post;
+```
+
+```js tab="Tab 3"
+//CommentList.js
+import { useRef, useImperativeHandle } from 'react';
+
+function CommentList({ ref }) {
+  const divRef = useRef(null);
+
+  useImperativeHandle(ref, () => {
+    return {
+      scrollToBottom() {
+        const node = divRef.current;
+        node.scrollTop = node.scrollHeight;
+      }
+    };
+  }, []);
+
+  let comments = [];
+  for (let i = 0; i < 50; i++) {
+    comments.push(<p key={i}>Comment #{i}</p>);
+  }
+
+  return (
+    <div className="CommentList" ref={divRef}>
+      {comments}
+    </div>
+  );
+}
+
+export default CommentList;
+```
+```js tab="Tab 4"
+//AddComment.js
+import { useRef, useImperativeHandle } from 'react';
+
+function AddComment({ ref }) {
+  return <input placeholder="Add comment..." ref={ref} />;
+}
+
+export default AddComment;
+```
+```js tab="Tab 5"
+```css
+.CommentList {
+  height: 100px;
+  overflow: scroll;
+  border: 1px solid black;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+```
+
+<Callout type='idea'>
+
+**Не злоупотребляйте refs.** Используйте refs только для *imperative* поведения, которое нельзя выразить через props: например, прокрутка к node, фокусировка node, запуск анимации, выделение текста и так далее.
+
+**Если что-то можно выразить через prop, ref использовать не следует.** Например, вместо того чтобы экспортировать из компонента `Modal` imperative handle вроде `{ open, close }`, лучше принимать `isOpen` как prop, например `<Modal isOpen={isOpen} />`. [Effects](/learn/synchronizing-with-effects) могут помочь вам реализовать imperative-поведение через props.
+
+</Callout>
