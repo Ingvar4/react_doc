@@ -1,0 +1,699 @@
+---
+title: useLayoutEffect
+description: useLayoutEffect может ухудшить производительность. По возможности используйте useEffect.
+---
+
+
+`useLayoutEffect` — это версия [`useEffect`](/reference/react/useEffect), которая срабатывает до того, как браузер перерисовывает экран.
+```js
+useLayoutEffect(setup, dependencies?)
+```
+
+## Reference {/*reference*/}
+
+### `useLayoutEffect(setup, dependencies?)` {/*useinsertioneffect*/}
+
+Вызывайте `useLayoutEffect`, чтобы выполнять измерения layout до того, как браузер перерисует экран:
+```js
+import { useState, useRef, useLayoutEffect } from 'react';
+
+function Tooltip() {
+  const ref = useRef(null);
+  const [tooltipHeight, setTooltipHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const { height } = ref.current.getBoundingClientRect();
+    setTooltipHeight(height);
+  }, []);
+  // ...
+```
+
+#### Параметры {/*parameters*/}
+
+* `setup`: Функция с логикой вашего Effect. Функция `setup` может также при желании возвращать функцию *cleanup*. Перед тем как ваш [компонент коммитится](/learn/render-and-commit#step-3-react-commits-changes-to-the-dom), React выполнит функцию `setup`. После каждого коммита, в котором изменились зависимости, React сначала выполнит функцию cleanup (если вы её указали) со старыми значениями, а затем выполнит функцию `setup` с новыми значениями. Перед удалением компонента из DOM React выполнит функцию cleanup.
+
+* **optional** `dependencies`: Список всех реактивных значений, на которые ссылается код `setup`. К реактивным значениям относятся props, state, а также все переменные и функции, объявленные прямо внутри тела компонента. Если у вас настроен [линтер для React](/learn/editor-setup#linting), он проверит, что каждое реактивное значение корректно указано как зависимость. Список зависимостей должен иметь постоянное количество элементов и быть записан inline, например так: `[dep1, dep2, dep3]`. React сравнивает каждую зависимость с её предыдущим значением с помощью алгоритма сравнения [`Object.is`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is). Если вы не укажете этот аргумент, ваш Effect будет запускаться заново после каждого коммита компонента.
+
+#### Возвращаемое значение {/*returns*/}
+
+`useLayoutEffect` возвращает `undefined`.
+
+#### Предостережения {/*caveats*/}
+
+* `useLayoutEffect` — это Hook, поэтому вы можете вызывать его только **на верхнем уровне компонента** или собственных Hooks. Нельзя вызывать его внутри циклов или условий. Если вам это нужно, вынесите новый компонент и перенесите Effect туда.
+
+* Когда включён Strict Mode, React **выполнит один дополнительный цикл setup+cleanup только для разработки** перед первым реальным запуском setup. Это стресс-тест, который гарантирует, что логика cleanup «зеркалит» логику setup и что она останавливает или отменяет всё, что делает setup. Если это создаёт проблему, [реализуйте функцию cleanup.](/learn/synchronizing-with-effects#how-to-handle-the-effect-firing-twice-in-development)
+
+* Если некоторые из ваших зависимостей — это объекты или функции, определённые внутри компонента, есть риск, что они **заставят Effect запускаться чаще, чем нужно.** Чтобы исправить это, уберите ненужные зависимости [объектов](/reference/react/useEffect#removing-unnecessary-object-dependencies) и [функций](/reference/react/useEffect#removing-unnecessary-function-dependencies). Вы также можете [вынести обновления state](/reference/react/useEffect#updating-state-based-on-previous-state-from-an-effect) и [нереактивную логику](/reference/react/useEffect#reading-the-latest-props-and-state-from-an-effect) за пределы вашего Effect.
+
+* Effects **работают только на клиенте.** Они не запускаются при серверном рендеринге.
+
+* Код внутри `useLayoutEffect` и все обновления state, запланированные из него, **блокируют браузер от перерисовки экрана.** При чрезмерном использовании это замедляет приложение. По возможности предпочитайте [`useEffect`.](/reference/react/useEffect)
+
+* Если вы запускаете обновление state внутри `useLayoutEffect`, React немедленно выполнит все оставшиеся Effects, включая `useEffect`.
+
+---
+
+## Использование {/*usage*/}
+
+### Измерение layout до перерисовки экрана браузером {/*measuring-layout-before-the-browser-repaints-the-screen*/}
+
+Большинству компонентов не нужно знать своё положение и размеры на экране, чтобы решить, что рендерить. Они просто возвращают JSX. Затем браузер вычисляет их *layout* (положение и размер) и перерисовывает экран.
+
+Иногда этого недостаточно. Представьте tooltip, который появляется рядом с элементом при наведении. Если места хватает, tooltip должен появляться над элементом, а если не помещается — под ним. Чтобы отрисовать tooltip в правильном конечном месте, нужно знать его высоту (то есть помещается ли он сверху).
+
+Для этого рендер нужно выполнять в два прохода:
+
+1. Отрисовать tooltip в любом месте (даже с неверной позицией).
+2. Измерить его высоту и решить, где разместить tooltip.
+3. Отрисовать tooltip *ещё раз* в правильном месте.
+
+**Всё это должно произойти до того, как браузер перерисует экран.** Пользователь не должен видеть, как tooltip перемещается. Вызывайте `useLayoutEffect`, чтобы выполнить измерения layout до перерисовки экрана браузером:
+```js {5-8}
+function Tooltip() {
+  const ref = useRef(null);
+  const [tooltipHeight, setTooltipHeight] = useState(0); // You don't know real height yet
+
+  useLayoutEffect(() => {
+    const { height } = ref.current.getBoundingClientRect();
+    setTooltipHeight(height); // Re-render now that you know the real height
+  }, []);
+
+  // ...use tooltipHeight in the rendering logic below...
+}
+```
+
+Вот как это работает шаг за шагом:
+
+1. `Tooltip` рендерится с начальным `tooltipHeight = 0` (поэтому tooltip может оказаться неправильно расположен).
+2. React помещает его в DOM и запускает код в `useLayoutEffect`.
+3. Ваш `useLayoutEffect` [измеряет высоту](https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect) содержимого tooltip и вызывает немедленный повторный рендер.
+4. `Tooltip` снова рендерится с реальным `tooltipHeight` (поэтому tooltip оказывается расположен правильно).
+5. React обновляет его в DOM, и браузер наконец отображает tooltip.
+
+Наводите курсор на кнопки ниже и посмотрите, как tooltip меняет позицию в зависимости от того, помещается он или нет:
+
+```js tab="Tab 1"
+import ButtonWithTooltip from './ButtonWithTooltip.js';
+
+export default function App() {
+  return (
+    <div>
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>
+            This tooltip does not fit above the button.
+            <br />
+            This is why it's displayed below instead!
+          </div>
+        }
+      >
+        Hover over me (tooltip above)
+      </ButtonWithTooltip>
+      <div style={{ height: 50 }} />
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>This tooltip fits above the button</div>
+        }
+      >
+        Hover over me (tooltip below)
+      </ButtonWithTooltip>
+      <div style={{ height: 50 }} />
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>This tooltip fits above the button</div>
+        }
+      >
+        Hover over me (tooltip below)
+      </ButtonWithTooltip>
+    </div>
+  );
+}
+```
+```js tab="Tab 2"
+//ButtonWithTooltip.js
+import { useState, useRef } from 'react';
+import Tooltip from './Tooltip.js';
+
+export default function ButtonWithTooltip({ tooltipContent, ...rest }) {
+  const [targetRect, setTargetRect] = useState(null);
+  const buttonRef = useRef(null);
+  return (
+    <>
+      <button
+        {...rest}
+        ref={buttonRef}
+        onPointerEnter={() => {
+          const rect = buttonRef.current.getBoundingClientRect();
+          setTargetRect({
+            left: rect.left,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+          });
+        }}
+        onPointerLeave={() => {
+          setTargetRect(null);
+        }}
+      />
+      {targetRect !== null && (
+        <Tooltip targetRect={targetRect}>
+          {tooltipContent}
+        </Tooltip>
+      )
+    }
+    </>
+  );
+}
+```
+```js tab="Tab 3"
+//Tooltip.js active
+import { useRef, useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import TooltipContainer from './TooltipContainer.js';
+
+export default function Tooltip({ children, targetRect }) {
+  const ref = useRef(null);
+  const [tooltipHeight, setTooltipHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const { height } = ref.current.getBoundingClientRect();
+    setTooltipHeight(height);
+    console.log('Measured tooltip height: ' + height);
+  }, []);
+
+  let tooltipX = 0;
+  let tooltipY = 0;
+  if (targetRect !== null) {
+    tooltipX = targetRect.left;
+    tooltipY = targetRect.top - tooltipHeight;
+    if (tooltipY < 0) {
+      // It doesn't fit above, so place below.
+      tooltipY = targetRect.bottom;
+    }
+  }
+
+  return createPortal(
+    <TooltipContainer x={tooltipX} y={tooltipY} contentRef={ref}>
+      {children}
+    </TooltipContainer>,
+    document.body
+  );
+}
+```
+```js tab="Tab 4"
+//TooltipContainer.js
+export default function TooltipContainer({ children, x, y, contentRef }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        pointerEvents: 'none',
+        left: 0,
+        top: 0,
+        transform: `translate3d(${x}px, ${y}px, 0)`
+      }}
+    >
+      <div ref={contentRef} className="tooltip">
+        {children}
+      </div>
+    </div>
+  );
+}
+```
+```js tab="Tab 5"
+//css
+.tooltip {
+  color: white;
+  background: #222;
+  border-radius: 4px;
+  padding: 4px;
+}
+```
+
+Обратите внимание: хотя компонент `Tooltip` должен рендериться в два прохода (сначала с `tooltipHeight`, равным `0`, а затем с реальной измеренной высотой), вы видите только конечный результат. Именно поэтому в этом примере нужен `useLayoutEffect`, а не [`useEffect`](/reference/react/useEffect). Ниже мы подробнее рассмотрим разницу.
+
+#### `useLayoutEffect` блокирует перерисовку браузера {/*uselayouteffect-blocks-the-browser-from-repainting*/}
+
+React гарантирует, что код внутри `useLayoutEffect` и все обновления state, запланированные внутри него, будут обработаны **до того, как браузер перерисует экран.** Это позволяет вам отрисовать tooltip, измерить его и снова перерисовать tooltip так, чтобы пользователь не заметил первый лишний рендер. Иными словами, `useLayoutEffect` блокирует рисование браузера.
+
+```js tab="Tab 1"
+import ButtonWithTooltip from './ButtonWithTooltip.js';
+
+export default function App() {
+  return (
+    <div>
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>
+            This tooltip does not fit above the button.
+            <br />
+            This is why it's displayed below instead!
+          </div>
+        }
+      >
+        Hover over me (tooltip above)
+      </ButtonWithTooltip>
+      <div style={{ height: 50 }} />
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>This tooltip fits above the button</div>
+        }
+      >
+        Hover over me (tooltip below)
+      </ButtonWithTooltip>
+      <div style={{ height: 50 }} />
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>This tooltip fits above the button</div>
+        }
+      >
+        Hover over me (tooltip below)
+      </ButtonWithTooltip>
+    </div>
+  );
+}
+```
+```js tab="Tab 2"
+//ButtonWithTooltip.js
+import { useState, useRef } from 'react';
+import Tooltip from './Tooltip.js';
+
+export default function ButtonWithTooltip({ tooltipContent, ...rest }) {
+  const [targetRect, setTargetRect] = useState(null);
+  const buttonRef = useRef(null);
+  return (
+    <>
+      <button
+        {...rest}
+        ref={buttonRef}
+        onPointerEnter={() => {
+          const rect = buttonRef.current.getBoundingClientRect();
+          setTargetRect({
+            left: rect.left,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+          });
+        }}
+        onPointerLeave={() => {
+          setTargetRect(null);
+        }}
+      />
+      {targetRect !== null && (
+        <Tooltip targetRect={targetRect}>
+          {tooltipContent}
+        </Tooltip>
+      )
+    }
+    </>
+  );
+}
+```
+```js tab="Tab 3"
+//Tooltip.js active
+import { useRef, useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import TooltipContainer from './TooltipContainer.js';
+
+export default function Tooltip({ children, targetRect }) {
+  const ref = useRef(null);
+  const [tooltipHeight, setTooltipHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const { height } = ref.current.getBoundingClientRect();
+    setTooltipHeight(height);
+  }, []);
+
+  let tooltipX = 0;
+  let tooltipY = 0;
+  if (targetRect !== null) {
+    tooltipX = targetRect.left;
+    tooltipY = targetRect.top - tooltipHeight;
+    if (tooltipY < 0) {
+      // It doesn't fit above, so place below.
+      tooltipY = targetRect.bottom;
+    }
+  }
+
+  return createPortal(
+    <TooltipContainer x={tooltipX} y={tooltipY} contentRef={ref}>
+      {children}
+    </TooltipContainer>,
+    document.body
+  );
+}
+```
+```js tab="Tab 4"
+//TooltipContainer.js
+export default function TooltipContainer({ children, x, y, contentRef }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        pointerEvents: 'none',
+        left: 0,
+        top: 0,
+        transform: `translate3d(${x}px, ${y}px, 0)`
+      }}
+    >
+      <div ref={contentRef} className="tooltip">
+        {children}
+      </div>
+    </div>
+  );
+}
+```
+```js tab="Tab 5"
+//css
+.tooltip {
+  color: white;
+  background: #222;
+  border-radius: 4px;
+  padding: 4px;
+}
+```
+
+#### `useEffect` не блокирует браузер {/*useeffect-does-not-block-the-browser*/}
+
+Вот тот же пример, но с [`useEffect`](/reference/react/useEffect) вместо `useLayoutEffect`. Если у вас более медленное устройство, вы можете заметить, что иногда tooltip «мигает», и вы на мгновение видите его исходную позицию до исправленной.
+
+```js tab="Tab 1"
+import ButtonWithTooltip from './ButtonWithTooltip.js';
+
+export default function App() {
+  return (
+    <div>
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>
+            This tooltip does not fit above the button.
+            <br />
+            This is why it's displayed below instead!
+          </div>
+        }
+      >
+        Hover over me (tooltip above)
+      </ButtonWithTooltip>
+      <div style={{ height: 50 }} />
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>This tooltip fits above the button</div>
+        }
+      >
+        Hover over me (tooltip below)
+      </ButtonWithTooltip>
+      <div style={{ height: 50 }} />
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>This tooltip fits above the button</div>
+        }
+      >
+        Hover over me (tooltip below)
+      </ButtonWithTooltip>
+    </div>
+  );
+}
+```
+```js tab="Tab 2"
+//ButtonWithTooltip.js
+import { useState, useRef } from 'react';
+import Tooltip from './Tooltip.js';
+
+export default function ButtonWithTooltip({ tooltipContent, ...rest }) {
+  const [targetRect, setTargetRect] = useState(null);
+  const buttonRef = useRef(null);
+  return (
+    <>
+      <button
+        {...rest}
+        ref={buttonRef}
+        onPointerEnter={() => {
+          const rect = buttonRef.current.getBoundingClientRect();
+          setTargetRect({
+            left: rect.left,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+          });
+        }}
+        onPointerLeave={() => {
+          setTargetRect(null);
+        }}
+      />
+      {targetRect !== null && (
+        <Tooltip targetRect={targetRect}>
+          {tooltipContent}
+        </Tooltip>
+      )
+    }
+    </>
+  );
+}
+```
+```js tab="Tab 3"
+//Tooltip.js active
+import { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import TooltipContainer from './TooltipContainer.js';
+
+export default function Tooltip({ children, targetRect }) {
+  const ref = useRef(null);
+  const [tooltipHeight, setTooltipHeight] = useState(0);
+
+  useEffect(() => {
+    const { height } = ref.current.getBoundingClientRect();
+    setTooltipHeight(height);
+  }, []);
+
+  let tooltipX = 0;
+  let tooltipY = 0;
+  if (targetRect !== null) {
+    tooltipX = targetRect.left;
+    tooltipY = targetRect.top - tooltipHeight;
+    if (tooltipY < 0) {
+      // It doesn't fit above, so place below.
+      tooltipY = targetRect.bottom;
+    }
+  }
+
+  return createPortal(
+    <TooltipContainer x={tooltipX} y={tooltipY} contentRef={ref}>
+      {children}
+    </TooltipContainer>,
+    document.body
+  );
+}
+```
+```js tab="Tab 4"
+//TooltipContainer.js
+export default function TooltipContainer({ children, x, y, contentRef }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        pointerEvents: 'none',
+        left: 0,
+        top: 0,
+        transform: `translate3d(${x}px, ${y}px, 0)`
+      }}
+    >
+      <div ref={contentRef} className="tooltip">
+        {children}
+      </div>
+    </div>
+  );
+}
+```
+```js tab="Tab 5"
+//css
+.tooltip {
+  color: white;
+  background: #222;
+  border-radius: 4px;
+  padding: 4px;
+}
+```
+
+Чтобы было проще воспроизвести баг, в этой версии добавлена искусственная задержка во время рендеринга. React позволит браузеру перерисовать экран до того, как обработает обновление state внутри `useEffect`. В результате tooltip мигает:
+
+```js tab="Tab 1"
+import ButtonWithTooltip from './ButtonWithTooltip.js';
+
+export default function App() {
+  return (
+    <div>
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>
+            This tooltip does not fit above the button.
+            <br />
+            This is why it's displayed below instead!
+          </div>
+        }
+      >
+        Hover over me (tooltip above)
+      </ButtonWithTooltip>
+      <div style={{ height: 50 }} />
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>This tooltip fits above the button</div>
+        }
+      >
+        Hover over me (tooltip below)
+      </ButtonWithTooltip>
+      <div style={{ height: 50 }} />
+      <ButtonWithTooltip
+        tooltipContent={
+          <div>This tooltip fits above the button</div>
+        }
+      >
+        Hover over me (tooltip below)
+      </ButtonWithTooltip>
+    </div>
+  );
+}
+```
+```js tab="Tab 2"
+//ButtonWithTooltip.js
+import { useState, useRef } from 'react';
+import Tooltip from './Tooltip.js';
+
+export default function ButtonWithTooltip({ tooltipContent, ...rest }) {
+  const [targetRect, setTargetRect] = useState(null);
+  const buttonRef = useRef(null);
+  return (
+    <>
+      <button
+        {...rest}
+        ref={buttonRef}
+        onPointerEnter={() => {
+          const rect = buttonRef.current.getBoundingClientRect();
+          setTargetRect({
+            left: rect.left,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+          });
+        }}
+        onPointerLeave={() => {
+          setTargetRect(null);
+        }}
+      />
+      {targetRect !== null && (
+        <Tooltip targetRect={targetRect}>
+          {tooltipContent}
+        </Tooltip>
+      )
+    }
+    </>
+  );
+}
+```
+```js tab="Tab 3"
+//Tooltip.js active
+import { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import TooltipContainer from './TooltipContainer.js';
+
+export default function Tooltip({ children, targetRect }) {
+  const ref = useRef(null);
+  const [tooltipHeight, setTooltipHeight] = useState(0);
+
+  // This artificially slows down rendering
+  let now = performance.now();
+  while (performance.now() - now < 100) {
+    // Do nothing for a bit...
+  }
+
+  useEffect(() => {
+    const { height } = ref.current.getBoundingClientRect();
+    setTooltipHeight(height);
+  }, []);
+
+  let tooltipX = 0;
+  let tooltipY = 0;
+  if (targetRect !== null) {
+    tooltipX = targetRect.left;
+    tooltipY = targetRect.top - tooltipHeight;
+    if (tooltipY < 0) {
+      // It doesn't fit above, so place below.
+      tooltipY = targetRect.bottom;
+    }
+  }
+
+  return createPortal(
+    <TooltipContainer x={tooltipX} y={tooltipY} contentRef={ref}>
+      {children}
+    </TooltipContainer>,
+    document.body
+  );
+}
+```
+```js tab="Tab 4"
+//TooltipContainer.js
+export default function TooltipContainer({ children, x, y, contentRef }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        pointerEvents: 'none',
+        left: 0,
+        top: 0,
+        transform: `translate3d(${x}px, ${y}px, 0)`
+      }}
+    >
+      <div ref={contentRef} className="tooltip">
+        {children}
+      </div>
+    </div>
+  );
+}
+```
+```js tab="Tab 5"
+//css
+.tooltip {
+  color: white;
+  background: #222;
+  border-radius: 4px;
+  padding: 4px;
+}
+```
+
+Измените этот пример на `useLayoutEffect` и убедитесь, что он блокирует отрисовку, даже если рендеринг замедлен.
+
+<Callout>
+
+Рендер в два прохода и блокировка браузера ухудшают производительность. По возможности старайтесь этого избегать.
+
+</Callout>
+
+---
+
+## Проблемы и их решение {/*troubleshooting*/}
+
+### Получаю ошибку: "`useLayoutEffect` ничего не делает на сервере" {/*im-getting-an-error-uselayouteffect-does-nothing-on-the-server*/}
+
+Смысл `useLayoutEffect` в том, чтобы дать вашему компоненту [использовать информацию о layout при рендеринге:](#measuring-layout-before-the-browser-repaints-the-screen)
+
+1. Отрендерить начальный контент.
+2. Измерить layout *до того, как браузер перерисует экран.*
+3. Отрендерить конечный контент, используя прочитанную информацию о layout.
+
+Когда вы или ваш фреймворк используете [серверный рендеринг](/reference/react-dom/server), ваше React-приложение при первоначальном рендере создаёт HTML на сервере. Это позволяет показать начальный HTML до загрузки JavaScript-кода.
+
+Проблема в том, что на сервере нет информации о layout.
+
+В [предыдущем примере](#measuring-layout-before-the-browser-repaints-the-screen) вызов `useLayoutEffect` в компоненте `Tooltip` позволяет ему правильно позиционировать себя (сверху или снизу контента) в зависимости от высоты содержимого. Если бы вы попытались отрендерить `Tooltip` как часть начального HTML на сервере, это было бы невозможно определить. На сервере layout ещё не существует! Поэтому даже если бы вы отрендерили его на сервере, его позиция «прыгнула» бы на клиенте после загрузки и выполнения JavaScript.
+
+Обычно компонентам, которые зависят от информации о layout, всё равно не нужно рендериться на сервере. Например, показывать `Tooltip` при начальном рендере, скорее всего, не имеет смысла. Он появляется в ответ на действие пользователя на клиенте.
+
+Однако если вы столкнулись с этой проблемой, есть несколько вариантов:
+
+- Заменить `useLayoutEffect` на [`useEffect`.](/reference/react/useEffect) Это говорит React, что можно показать результат начального рендера, не блокируя отрисовку (потому что исходный HTML станет видимым ещё до запуска Effect).
+
+- Либо [пометить компонент как client-only.](/reference/react/Suspense#providing-a-fallback-for-server-errors-and-client-only-content) Это говорит React во время серверного рендеринга заменять его содержимое вплоть до ближайшей границы [`<Suspense>`](/reference/react/Suspense) на fallback загрузки (например, спиннер или shimmer).
+
+- Либо рендерить компонент с `useLayoutEffect` только после гидрации. Храните булево состояние `isMounted`, инициализируя его как `false`, а затем устанавливайте в `true` внутри вызова `useEffect`. Тогда логика рендеринга может выглядеть так: `return isMounted ? <RealContent /> : <FallbackContent />`. На сервере и во время гидрации пользователь увидит `FallbackContent`, который не должен вызывать `useLayoutEffect`. Затем React заменит его на `RealContent`, который выполняется только на клиенте и может содержать вызовы `useLayoutEffect`.
+
+- Если вы синхронизируете компонент с внешним хранилищем данных и используете `useLayoutEffect` по причинам, не связанным с измерением layout, рассмотрите вместо этого [`useSyncExternalStore`](/reference/react/useSyncExternalStore), который [поддерживает серверный рендеринг.](/reference/react/useSyncExternalStore#adding-support-for-server-rendering)
