@@ -1,0 +1,523 @@
+---
+title: useMemo
+description: useMemo - это React Hook, который позволяет кэшировать результат вычисления между повторными рендерами.
+---
+
+
+```js
+const cachedValue = useMemo(calculateValue, dependencies)
+```
+
+
+<Callout>
+
+[React Compiler](/learn/react-compiler) автоматически мемоизирует значения и функции, уменьшая необходимость в ручных вызовах `useMemo`. Вы можете доверить мемоизацию compiler'у.
+
+</Callout>
+
+## Справка {/*reference*/}
+
+### `useMemo(calculateValue, dependencies)` {/*usememo*/}
+
+Вызовите `useMemo` на верхнем уровне компонента, чтобы кэшировать вычисление между повторными рендерами:
+```js
+import { useMemo } from 'react';
+
+function TodoList({ todos, tab }) {
+  const visibleTodos = useMemo(
+    () => filterTodos(todos, tab),
+    [todos, tab]
+  );
+  // ...
+}
+```
+
+#### Параметры {/*parameters*/}
+
+* `calculateValue`: Функция, которая вычисляет значение, которое вы хотите кэшировать. Она должна быть pure, не должна принимать аргументов и должна возвращать значение любого типа. React вызовет эту функцию при первом рендере. При следующих рендерах React снова вернёт то же значение, если `dependencies` не изменились с прошлого рендера. В противном случае React вызовет `calculateValue`, вернёт её результат и сохранит его, чтобы использовать позже.
+
+* `dependencies`: Список всех reactive values, на которые ссылается код внутри `calculateValue`. Reactive values включают props, state и все переменные и функции, объявленные прямо внутри тела компонента. Если ваш linter [настроен для React](/learn/editor-setup#linting), он проверит, что каждое reactive value корректно указано как dependency. Список dependencies должен содержать постоянное число элементов и быть записан inline, например `[dep1, dep2, dep3]`. React будет сравнивать каждую dependency с её предыдущим значением с помощью сравнения [`Object.is`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is).
+
+#### Возвращаемое значение {/*returns*/}
+
+При первом рендере `useMemo` возвращает результат вызова `calculateValue` без аргументов.
+
+При последующих рендерах он либо вернёт уже сохранённое значение с прошлого рендера (если dependencies не изменились), либо снова вызовет `calculateValue` и вернёт результат, который она вернёт.
+
+#### Предостережения {/*caveats*/}
+
+* `useMemo` — это Hook, поэтому вы можете вызывать его только **на верхнем уровне вашего компонента** или ваших собственных Hooks. Вы не можете вызывать его внутри циклов или условий. Если вам это нужно, вынесите новый компонент и перенесите state в него.
+* В Strict Mode React **вызовет вашу функцию вычисления дважды**, чтобы [помочь вам найти случайные impurities.](#my-calculation-runs-twice-on-every-re-render) Это поведение только для разработки и не влияет на production. Если ваша функция вычисления pure (как и должна быть), это не повлияет на логику. Результат одного из вызовов будет проигнорирован.
+* React **не будет выбрасывать кэшированное значение без конкретной причины.** Например, в development React сбрасывает кэш, когда вы редактируете файл компонента. И в development, и в production React сбросит кэш, если компонент suspend'ится во время начального mount. В будущем React может добавить новые возможности, которые будут использовать такой сброс кэша — например, если появится встроенная поддержка virtualized lists, будет логично сбрасывать кэш для элементов, которые выходят за пределы viewport виртуализированной таблицы. Это нормально, если вы используете `useMemo` только как performance optimization. В противном случае более уместны [state variable](/reference/react/useState#avoiding-recreating-the-initial-state) или [ref](/reference/react/useRef#avoiding-recreating-the-ref-contents).
+
+<Callout>
+
+Кэширование возвращаемых значений таким способом также называется [*memoization*,](https://en.wikipedia.org/wiki/Memoization) поэтому этот Hook и называется `useMemo`.
+
+</Callout>
+
+---
+
+## Использование {/*usage*/}
+
+### Пропуск дорогостоящих повторных вычислений {/*skipping-expensive-recalculations*/}
+
+Чтобы кэшировать вычисление между повторными рендерами, заверните его в вызов `useMemo` на верхнем уровне компонента:
+```js 
+import { useMemo } from 'react';
+
+function TodoList({ todos, tab, theme }) {
+  const visibleTodos = useMemo(() => filterTodos(todos, tab), [todos, tab]);
+  // ...
+}
+```
+В `useMemo` нужно передать две вещи:
+
+1. функцию вычисления, которая не принимает аргументов, как `() =>`, и возвращает то, что нужно было вычислить.
+2. список dependencies, включающий каждое значение из вашего компонента, которое используется внутри вычисления.
+
+При первом рендере значение, которое вы получите из `useMemo`, будет результатом вызова вашей функции вычисления.
+
+При каждом следующем рендере React будет сравнивать dependencies с dependencies из прошлого рендера. Если ни одна из них не изменилась (по сравнению с [`Object.is`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is)), `useMemo` вернёт то значение, которое было уже вычислено ранее. Иначе React заново выполнит вычисление и вернёт новое значение.
+
+Иными словами, `useMemo` кэширует результат вычисления между рендерами, пока dependencies не изменятся.
+
+**Давайте разберём пример, чтобы увидеть, когда это полезно.**
+
+По умолчанию React будет заново выполнять всё тело компонента при каждом повторном рендере. Например, если `TodoList` обновит state или получит новые props от родителя, функция `filterTodos` выполнится снова:
+```js {2}
+function TodoList({ todos, tab, theme }) {
+  const visibleTodos = filterTodos(todos, tab);
+  // ...
+}
+```
+Обычно это не проблема, потому что большинство вычислений очень быстрые. Но если вы фильтруете или преобразуете большой массив, либо выполняете дорогое вычисление, вам может понадобиться не делать это снова, если данные не изменились. Если и `todos`, и `tab` такие же, как и при прошлом рендере, обёртка вычисления в `useMemo`, как выше, позволит вам переиспользовать уже рассчитанный `visibleTodos`.
+
+Такой тип кэширования называется *[memoization.](https://en.wikipedia.org/wiki/Memoization)*
+
+<Callout>
+
+**Использовать `useMemo` стоит только как performance optimization.** Если код без него не работает, сначала найдите и исправьте основную проблему. После этого можно добавить `useMemo`, чтобы улучшить производительность.
+
+</Callout>
+
+<Callout type='idea'>
+
+#### Как понять, дорогое ли вычисление? {/*how-to-tell-if-a-calculation-is-expensive*/}
+
+В общем случае, если вы не создаёте и не проходите по тысячам объектов, вычисление, скорее всего, не является дорогим. Если хотите убедиться, можно добавить `console.log` или замер времени в кусок кода:
+```js {1,3}
+console.time('filter array');
+const visibleTodos = filterTodos(todos, tab);
+console.timeEnd('filter array');
+```
+Выполните измеряемое действие (например, ввод текста в input). Затем вы увидите в консоли что-то вроде `filter array: 0.15ms`. Если суммарное время оказывается заметным (скажем, `1ms` или больше), возможно, есть смысл мемоизировать это вычисление. Для проверки можно обернуть вычисление в `useMemo` и посмотреть, уменьшится ли общее время для этого взаимодействия:
+
+```js
+console.time('filter array');
+const visibleTodos = useMemo(() => {
+  return filterTodos(todos, tab); // Пропускается, если todos и tab не изменились
+}, [todos, tab]);
+console.timeEnd('filter array');
+```
+
+`useMemo` не ускорит *первый* рендер. Он помогает только пропускать лишнюю работу при обновлениях.
+
+Помните, что ваш компьютер, скорее всего, быстрее, чем компьютеры ваших пользователей, поэтому стоит тестировать производительность с искусственным замедлением. Например, в Chrome есть опция [CPU Throttling](https://developer.chrome.com/blog/new-in-devtools-61/#throttling).
+
+Также важно понимать, что замеры в development не дают самых точных результатов. (Например, когда [Strict Mode](/reference/react/StrictMode) включён, вы увидите, что каждый компонент рендерится дважды, а не один раз.) Чтобы получить более точные цифры, собирайте приложение для production и тестируйте его на устройстве, похожем на устройства ваших пользователей.
+
+</Callout>
+
+<Callout type='idea'>
+
+#### Нужно ли добавлять `useMemo` везде? {/*should-you-add-usememo-everywhere*/}
+
+Если ваше приложение похоже на этот сайт, и большинство взаимодействий крупные (например, замена страницы или целого раздела), мемоизация обычно не нужна. С другой стороны, если ваше приложение больше похоже на графический редактор, и большинство взаимодействий мелкие (например, перемещение фигур), мемоизация может быть очень полезна.
+
+Оптимизация с `useMemo` действительно полезна только в нескольких случаях:
+
+- Вычисление, которое вы помещаете в `useMemo`, заметно медленное, и его dependencies редко меняются.
+- Вы передаёте результат как prop в компонент, обёрнутый в [`memo`.](/reference/react/memo) Вы хотите пропускать повторный рендер, если значение не изменилось. Мемоизация позволяет компоненту перерендериваться только когда dependencies не совпадают.
+- Передаваемое вами значение позже используется как dependency какого-то Hook. Например, от него может зависеть другой результат `useMemo`. Или вы зависите от этого значения в [`useEffect`.](/reference/react/useEffect)
+
+В других случаях пользы от обёртки вычисления в `useMemo` нет. И большого вреда тоже нет, поэтому некоторые команды решают не разбирать каждый случай отдельно и мемоизировать как можно больше. Минус такого подхода в том, что код становится менее читаемым. Кроме того, не всякая мемоизация эффективна: одного значения, которое "всегда новое", достаточно, чтобы сломать мемоизацию целого компонента.
+
+**На практике можно сильно уменьшить необходимость в мемоизации, если следовать нескольким принципам:**
+
+1. Когда компонент визуально оборачивает другие компоненты, пусть он [принимает JSX как children.](/learn/passing-props-to-a-component#passing-jsx-as-children) Тогда, если wrapper-компонент обновляет собственный state, React понимает, что его children не нужно перерендеривать.
+1. Предпочитайте локальный state и не [поднимайте state выше](/learn/sharing-state-between-components) без необходимости. Например, не храните временный state, такой как формы или состояние hover, в верхушке дерева или в глобальной state-библиотеке.
+1. Держите [логику рендера pure.](/learn/keeping-components-pure) Если повторный рендер компонента вызывает проблему или заметный визуальный артефакт, это баг в компоненте! Исправьте баг, а не добавляйте мемоизацию.
+1. Избегайте [ненужных Effects, которые обновляют state.](/learn/you-might-not-need-an-effect) Большинство проблем с производительностью в React-приложениях вызываются цепочками обновлений, которые начинаются в Effects и заставляют компоненты рендериться снова и снова.
+1. Старайтесь [убирать ненужные dependencies из Effects.](/learn/removing-effect-dependencies) Например, вместо мемоизации часто проще перенести объект или функцию внутрь Effect либо вынести их наружу.
+
+Если конкретное взаимодействие всё ещё кажется тормозным, [используйте profiler из React Developer Tools](https://legacy.reactjs.org/blog/2018/09/10/introducing-the-react-profiler.html), чтобы понять, какие компоненты больше всего выигрывают от мемоизации, и добавьте мемоизацию там, где она нужна. Эти принципы в любом случае делают компоненты проще для отладки и понимания, так что следовать им полезно в любом случае. В долгосрочной перспективе мы исследуем [автоматическую granular memoization](https://www.youtube.com/watch?v=lGEMwh32soc), чтобы решить это раз и навсегда.
+
+</Callout>
+
+```js
+console.time('filter array');
+const visibleTodos = useMemo(() => {
+  return filterTodos(todos, tab); // Skipped if todos and tab haven't changed
+}, [todos, tab]);
+console.timeEnd('filter array');
+```
+#### Пропуск повторного вычисления с `useMemo` {/*skipping-recalculation-with-usememo*/}
+
+В этом примере реализация `filterTodos` **искусственно замедлена**, чтобы вы увидели, что происходит, когда какая-то JavaScript-функция, вызываемая во время рендера, действительно медленная. Попробуйте переключать вкладки и менять theme.
+
+Переключение вкладок ощущается медленным, потому что оно заставляет замедленную `filterTodos` выполниться снова. Это ожидаемо, потому что `tab` изменился, а значит, всё вычисление *должно* выполниться заново. (Если интересно, почему оно выполняется дважды, это объясняется [здесь.](#my-calculation-runs-twice-on-every-re-render))
+
+Поменяйте theme. **Благодаря `useMemo`, всё работает быстро несмотря на искусственное замедление!** Медленный вызов `filterTodos` был пропущен, потому что и `todos`, и `tab` (которые вы передаёте как dependencies в `useMemo`) не изменились с прошлого рендера.
+
+```js tab="Tab 1"
+//App.js
+import { useState } from 'react';
+import { createTodos } from './utils.js';
+import TodoList from './TodoList.js';
+
+const todos = createTodos();
+
+export default function App() {
+  const [tab, setTab] = useState('all');
+  const [isDark, setIsDark] = useState(false);
+  return (
+    <>
+      <button onClick={() => setTab('all')}>
+        All
+      </button>
+      <button onClick={() => setTab('active')}>
+        Active
+      </button>
+      <button onClick={() => setTab('completed')}>
+        Completed
+      </button>
+      <br />
+      <label>
+        <input
+          type="checkbox"
+          checked={isDark}
+          onChange={e => setIsDark(e.target.checked)}
+        />
+        Dark mode
+      </label>
+      <hr />
+      <TodoList
+        todos={todos}
+        tab={tab}
+        theme={isDark ? 'dark' : 'light'}
+      />
+    </>
+  );
+}
+
+```
+```js tab="Tab 2"
+//TodoList.js active
+import { useMemo } from 'react';
+import { filterTodos } from './utils.js'
+
+export default function TodoList({ todos, theme, tab }) {
+  const visibleTodos = useMemo(
+    () => filterTodos(todos, tab),
+    [todos, tab]
+  );
+  return (
+    <div className={theme}>
+      <p><b>Note: <code>filterTodos</code> is artificially slowed down!</b></p>
+      <ul>
+        {visibleTodos.map(todo => (
+          <li key={todo.id}>
+            {todo.completed ?
+              <s>{todo.text}</s> :
+              todo.text
+            }
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+```js tab="Tab 3"
+//utils.js
+export function createTodos() {
+  const todos = [];
+  for (let i = 0; i < 50; i++) {
+    todos.push({
+      id: i,
+      text: "Todo " + (i + 1),
+      completed: Math.random() > 0.5
+    });
+  }
+  return todos;
+}
+
+export function filterTodos(todos, tab) {
+  console.log('[ARTIFICIALLY SLOW] Filtering ' + todos.length + ' todos for "' + tab + '" tab.');
+  let startTime = performance.now();
+  while (performance.now() - startTime < 500) {
+    // Do nothing for 500 ms to emulate extremely slow code
+  }
+
+  return todos.filter(todo => {
+    if (tab === 'all') {
+      return true;
+    } else if (tab === 'active') {
+      return !todo.completed;
+    } else if (tab === 'completed') {
+      return todo.completed;
+    }
+  });
+}
+```
+```js tab="Tab 4"
+//css
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+.dark {
+  background-color: black;
+  color: white;
+}
+
+.light {
+  background-color: white;
+  color: black;
+}
+```
+
+#### Always recalculating a value {/*always-recalculating-a-value*/}
+
+In this example, the `filterTodos` implementation is also **artificially slowed down** so that you can see what happens when some JavaScript function you're calling during rendering is genuinely slow. Try switching the tabs and toggling the theme.
+
+Unlike in the previous example, toggling the theme is also slow now! This is because **there is no `useMemo` call in this version,** so the artificially slowed down `filterTodos` gets called on every re-render. It is called even if only `theme` has changed.
+
+```js tab="Tab 1"
+//App.js
+import { useState } from 'react';
+import { createTodos } from './utils.js';
+import TodoList from './TodoList.js';
+
+const todos = createTodos();
+
+export default function App() {
+  const [tab, setTab] = useState('all');
+  const [isDark, setIsDark] = useState(false);
+  return (
+    <>
+      <button onClick={() => setTab('all')}>
+        All
+      </button>
+      <button onClick={() => setTab('active')}>
+        Active
+      </button>
+      <button onClick={() => setTab('completed')}>
+        Completed
+      </button>
+      <br />
+      <label>
+        <input
+          type="checkbox"
+          checked={isDark}
+          onChange={e => setIsDark(e.target.checked)}
+        />
+        Dark mode
+      </label>
+      <hr />
+      <TodoList
+        todos={todos}
+        tab={tab}
+        theme={isDark ? 'dark' : 'light'}
+      />
+    </>
+  );
+}
+
+```
+```js tab="Tab 2"
+//TodoList.js active
+import { filterTodos } from './utils.js'
+
+export default function TodoList({ todos, theme, tab }) {
+  const visibleTodos = filterTodos(todos, tab);
+  return (
+    <div className={theme}>
+      <ul>
+        <p><b>Note: <code>filterTodos</code> is artificially slowed down!</b></p>
+        {visibleTodos.map(todo => (
+          <li key={todo.id}>
+            {todo.completed ?
+              <s>{todo.text}</s> :
+              todo.text
+            }
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+```js tab="Tab 3"
+//utils.js
+export function createTodos() {
+  const todos = [];
+  for (let i = 0; i < 50; i++) {
+    todos.push({
+      id: i,
+      text: "Todo " + (i + 1),
+      completed: Math.random() > 0.5
+    });
+  }
+  return todos;
+}
+
+export function filterTodos(todos, tab) {
+  console.log('[ARTIFICIALLY SLOW] Filtering ' + todos.length + ' todos for "' + tab + '" tab.');
+  let startTime = performance.now();
+  while (performance.now() - startTime < 500) {
+    // Do nothing for 500 ms to emulate extremely slow code
+  }
+
+  return todos.filter(todo => {
+    if (tab === 'all') {
+      return true;
+    } else if (tab === 'active') {
+      return !todo.completed;
+    } else if (tab === 'completed') {
+      return todo.completed;
+    }
+  });
+}
+```
+```js tab="Tab 4"
+//css
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+.dark {
+  background-color: black;
+  color: white;
+}
+
+.light {
+  background-color: white;
+  color: black;
+}
+```
+
+However, here is the same code **with the artificial slowdown removed.** Does the lack of `useMemo` feel noticeable or not?
+
+```js tab="Tab 1"
+//App.js
+import { useState } from 'react';
+import { createTodos } from './utils.js';
+import TodoList from './TodoList.js';
+
+const todos = createTodos();
+
+export default function App() {
+  const [tab, setTab] = useState('all');
+  const [isDark, setIsDark] = useState(false);
+  return (
+    <>
+      <button onClick={() => setTab('all')}>
+        All
+      </button>
+      <button onClick={() => setTab('active')}>
+        Active
+      </button>
+      <button onClick={() => setTab('completed')}>
+        Completed
+      </button>
+      <br />
+      <label>
+        <input
+          type="checkbox"
+          checked={isDark}
+          onChange={e => setIsDark(e.target.checked)}
+        />
+        Dark mode
+      </label>
+      <hr />
+      <TodoList
+        todos={todos}
+        tab={tab}
+        theme={isDark ? 'dark' : 'light'}
+      />
+    </>
+  );
+}
+
+```
+```js tab="Tab 2"
+//TodoList.js active
+import { filterTodos } from './utils.js'
+
+export default function TodoList({ todos, theme, tab }) {
+  const visibleTodos = filterTodos(todos, tab);
+  return (
+    <div className={theme}>
+      <ul>
+        {visibleTodos.map(todo => (
+          <li key={todo.id}>
+            {todo.completed ?
+              <s>{todo.text}</s> :
+              todo.text
+            }
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+```js tab="Tab 3"
+//utils.js
+export function createTodos() {
+  const todos = [];
+  for (let i = 0; i < 50; i++) {
+    todos.push({
+      id: i,
+      text: "Todo " + (i + 1),
+      completed: Math.random() > 0.5
+    });
+  }
+  return todos;
+}
+
+export function filterTodos(todos, tab) {
+  console.log('Filtering ' + todos.length + ' todos for "' + tab + '" tab.');
+
+  return todos.filter(todo => {
+    if (tab === 'all') {
+      return true;
+    } else if (tab === 'active') {
+      return !todo.completed;
+    } else if (tab === 'completed') {
+      return todo.completed;
+    }
+  });
+}
+```
+```js tab="Tab 4"
+//css
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+.dark {
+  background-color: black;
+  color: white;
+}
+
+.light {
+  background-color: white;
+  color: black;
+}
+```
